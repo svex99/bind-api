@@ -1,24 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 
 	"github.com/svex99/bind-api/handlers"
-	"github.com/svex99/bind-api/middlewares"
 	"github.com/svex99/bind-api/models"
 	"github.com/svex99/bind-api/utils/setting"
 )
 
 func main() {
-	if err := godotenv.Load(".env"); err != nil {
-		fmt.Println("Error loading the .env file")
-		return
-	}
-
 	models.ConnectDatabase()
 
 	router := gin.Default()
@@ -34,11 +26,12 @@ func main() {
 	})
 
 	protected := router.Group("/api")
-	protected.Use(middlewares.JWTAuth())
+	// protected.Use(middlewares.JWTAuth())
 	protected.GET("/domains", handlers.ListDomains)
+	protected.GET("/domain/:name", handlers.GetDomain)
 	protected.POST("/domains", handlers.NewDomain)
-	protected.PUT("/domains/:id", handlers.UpdateDomain)
-	protected.DELETE("/domains/:id", handlers.DeleteDomain)
+	protected.PATCH("/domains/:name", handlers.UpdateDomain)
+	protected.DELETE("/domains/:name", handlers.DeleteDomain)
 	protected.POST("/subdomains", handlers.NewSubdomain)
 
 	router.Run(":2020")

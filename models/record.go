@@ -1,17 +1,5 @@
 package models
 
-type Domain struct {
-	Name       string `json:"name" binding:"required"`
-	NameServer string `json:"name_server" binding:"required"`
-	NSIp       string `json:"nsip" binding:"required"`
-	Ttl        string `json:"ttl"`
-}
-
-type Subdomain struct {
-	Name string `json:"name" binding:"required"`
-	Ip   string `json:"ip" binding:"required"`
-}
-
 type Record struct {
 	Domain string `json:"domain" binding:"required"`
 	Ttl    string `json:"ttl"`

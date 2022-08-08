@@ -22,5 +22,8 @@ func ConnectDatabase() {
 		fmt.Println("Database connection is ready")
 	}
 
-	DB.AutoMigrate(&User{})
+	DB.AutoMigrate(
+		&User{},
+		&Domain{},
+	)
 }
