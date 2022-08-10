@@ -14,6 +14,7 @@ func ConnectDatabase() {
 	var err error
 
 	DB, err = gorm.Open(sqlite.Open("bind-api.db"), &gorm.Config{})
+	DB.Exec("PRAGMA foreign_keys=ON")
 
 	if err != nil {
 		fmt.Println("Error connecting to database")
@@ -25,5 +26,6 @@ func ConnectDatabase() {
 	DB.AutoMigrate(
 		&User{},
 		&Domain{},
+		&Subdomain{},
 	)
 }

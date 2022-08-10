@@ -6,13 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/svex99/bind-api/models"
+	"github.com/svex99/bind-api/utils/path"
 )
 
 func ListDomains(c *gin.Context) {
 	// TODO: implement pagination
-	var domainNames []string
+	var domains []models.DomainInfo
 
-	if err := models.DB.Model(&models.Domain{}).Select("name").Find(&domainNames).Error; err != nil {
+	if err := models.DB.Model(&models.Domain{}).Select("id", "name").Find(&domains).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
@@ -20,14 +21,18 @@ func ListDomains(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"domains": domainNames,
+		"domains": domains,
 	})
 }
 
 func GetDomain(c *gin.Context) {
-	name := c.Param("name")
+	pathData, err := path.ParsePath(c)
 
-	domain := models.Domain{Name: name}
+	if err != nil {
+		return
+	}
+
+	domain := models.Domain{Id: pathData.DomainId}
 
 	if err := models.DB.First(&domain).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -62,9 +67,13 @@ func NewDomain(c *gin.Context) {
 }
 
 func UpdateDomain(c *gin.Context) {
-	name := c.Param("name")
+	pathData, err := path.ParsePath(c)
 
-	var domain = models.Domain{Name: name}
+	if err != nil {
+		return
+	}
+
+	domain := models.Domain{Id: pathData.DomainId}
 
 	if err := models.DB.First(&domain).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -82,6 +91,9 @@ func UpdateDomain(c *gin.Context) {
 		return
 	}
 
+	if domainForm.Name != "" {
+		domain.Name = domainForm.Name
+	}
 	if domainForm.NameServer != "" {
 		domain.NameServer = domainForm.NameServer
 	}
@@ -105,9 +117,13 @@ func UpdateDomain(c *gin.Context) {
 }
 
 func DeleteDomain(c *gin.Context) {
-	name := c.Param("name")
+	pathData, err := path.ParsePath(c)
 
-	domain := models.Domain{Name: name}
+	if err != nil {
+		return
+	}
+
+	domain := models.Domain{Id: pathData.DomainId}
 
 	if err := models.DB.Delete(&domain).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
