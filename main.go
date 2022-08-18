@@ -32,12 +32,12 @@ func main() {
 	// domain handlers
 	protected.GET("/domains", handlers.ListDomains)
 	protected.POST("/domains", handlers.NewDomain)
-	protected.GET("/domain/:domain_id", handlers.GetDomain)
+	protected.GET("/domains/:domain_id", handlers.GetDomain)
 	protected.PATCH("/domains/:domain_id", handlers.UpdateDomain)
 	protected.DELETE("/domains/:domain_id", handlers.DeleteDomain)
 	// subdomain handlers
 	protected.GET("/domains/:domain_id/subdomains", handlers.ListSubdomains)
-	protected.POST("/domains/:domain_id/subdomains/", handlers.NewSubdomain)
+	protected.POST("/domains/:domain_id/subdomains", handlers.NewSubdomain)
 	protected.GET("/domains/:domain_id/subdomains/:subdomain_id", handlers.GetSubdomain)
 	protected.PATCH("/domains/:domain_id/subdomains/:subdomain_id", handlers.UpdateSubdomain)
 	protected.DELETE("/domains/:domain_id/subdomains/:subdomain_id", handlers.DeleteSubdomain)
