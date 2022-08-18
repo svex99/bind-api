@@ -17,6 +17,7 @@ func main() {
 	router := gin.Default()
 
 	public := router.Group("/api")
+	router.Use(middlewares.CORS())
 	public.POST("/register", handlers.Register)
 	public.POST("/login", handlers.Login)
 	public.GET("/test", func(c *gin.Context) {
