@@ -11,9 +11,9 @@ import (
 
 func ListDomains(c *gin.Context) {
 	// TODO: implement pagination
-	var domains []models.DomainInfo
+	var domains []models.Domain
 
-	if err := models.DB.Model(&models.Domain{}).Select("id", "name").Find(&domains).Error; err != nil {
+	if err := models.DB.Model(&models.Domain{}).Find(&domains).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})

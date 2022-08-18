@@ -32,17 +32,8 @@ func ListSubdomains(c *gin.Context) {
 		return
 	}
 
-	var subdomainDatas []models.SubdomainInfo
-
-	for _, sd := range domain.Subdomains {
-		subdomainDatas = append(subdomainDatas, models.SubdomainInfo{
-			Id:   sd.Id,
-			Name: sd.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"subdomains": subdomainDatas,
+		"subdomains": domain.Subdomains,
 	})
 }
 
@@ -93,9 +84,7 @@ func NewSubdomain(c *gin.Context) {
 
 	// TODO: Add the subdomain to bind
 
-	c.JSON(http.StatusCreated, gin.H{
-		"subdomain": subdomain,
-	})
+	c.JSON(http.StatusCreated, subdomain)
 }
 
 func UpdateSubdomain(c *gin.Context) {
