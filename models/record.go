@@ -9,7 +9,7 @@ type Record struct {
 
 type SOARecord struct {
 	Record
-	NameServer string `json:"name_server" binding:"required"`
+	NameServer string `json:"nameServer" binding:"required"`
 	Admin      string `json:"admin"`
 	Serial     uint   `json:"serial"`
 	Refresh    string `json:"refresh"`
@@ -30,13 +30,13 @@ type AAAARecord struct {
 
 type NSRecord struct {
 	Record
-	NameServer string `json:"name_server" binding:"required"`
+	NameServer string `json:"nameServer" binding:"required"`
 }
 
 type MXRecord struct {
 	Record
 	Priority    int    `json:"priority" binding:"required"`
-	EmailServer string `json:"email_server" binding:"required"`
+	EmailServer string `json:"emailServer" binding:"required"`
 }
 
 // TODO: Add more types of records
