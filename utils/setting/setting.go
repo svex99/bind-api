@@ -11,6 +11,7 @@ type AppSetting struct {
 	TokenHourLifespan int
 	BindCfgPath       string
 	BindDbsPath       string
+	BindAdmin         string
 }
 
 var App = &AppSetting{}

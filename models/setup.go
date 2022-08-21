@@ -27,5 +27,8 @@ func ConnectDatabase() {
 		&User{},
 		&Domain{},
 		&Subdomain{},
+		&SOARecord{},
+		&NSRecord{},
+		&ARecord{},
 	)
 }
