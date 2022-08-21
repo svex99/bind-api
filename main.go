@@ -32,15 +32,15 @@ func main() {
 	// domain handlers
 	protected.GET("/domains", handlers.ListDomains)
 	protected.POST("/domains", handlers.NewDomain)
-	protected.GET("/domains/:domain_id", handlers.GetDomain)
-	protected.PATCH("/domains/:domain_id", handlers.UpdateDomain)
-	protected.DELETE("/domains/:domain_id", handlers.DeleteDomain)
+	protected.GET("/domains/:domainId", handlers.GetDomain)
+	protected.PATCH("/domains/:domainId", handlers.UpdateDomain)
+	protected.DELETE("/domains/:domainId", handlers.DeleteDomain)
 	// subdomain handlers
-	protected.GET("/domains/:domain_id/subdomains", handlers.ListSubdomains)
-	protected.POST("/domains/:domain_id/subdomains", handlers.NewSubdomain)
-	protected.GET("/domains/:domain_id/subdomains/:subdomain_id", handlers.GetSubdomain)
-	protected.PATCH("/domains/:domain_id/subdomains/:subdomain_id", handlers.UpdateSubdomain)
-	protected.DELETE("/domains/:domain_id/subdomains/:subdomain_id", handlers.DeleteSubdomain)
+	protected.GET("/domains/:domainId/subdomains", handlers.ListSubdomains)
+	protected.POST("/domains/:domainId/subdomains", handlers.NewSubdomain)
+	protected.GET("/domains/:domainId/subdomains/:subdomainId", handlers.GetSubdomain)
+	protected.PATCH("/domains/:domainId/subdomains/:subdomainId", handlers.UpdateSubdomain)
+	protected.DELETE("/domains/:domainId/subdomains/:subdomainId", handlers.DeleteSubdomain)
 
 	router.Run(":2020")
 }

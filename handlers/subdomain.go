@@ -75,14 +75,12 @@ func NewSubdomain(c *gin.Context) {
 	// TODO: Get the domain id directly from the uri
 	subdomain.DomainId = pathData.DomainId
 
-	if err := models.DB.Save(&subdomain).Error; err != nil {
+	if err := subdomain.Create(); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-
-	// TODO: Add the subdomain to bind
 
 	c.JSON(http.StatusCreated, subdomain)
 }

@@ -54,14 +54,12 @@ func NewDomain(c *gin.Context) {
 		return
 	}
 
-	if err := models.DB.Create(&domain).Error; err != nil {
+	if err := domain.Create(); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-
-	// TODO: Add the domain to bind
 
 	c.JSON(http.StatusCreated, domain)
 }
