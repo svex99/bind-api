@@ -1,7 +1,7 @@
 package models
 
 type Record struct {
-	Id         uint64 `json:"id" gorm:"primaryKey"`
+	Id         uint   `json:"id" gorm:"primaryKey"`
 	Ttl        string `json:"ttl" binding:"min=2"`
 	Class      string `json:"class" binding:"min=1"`
 	DomainName string `json:"domainName" binding:"min=1"`

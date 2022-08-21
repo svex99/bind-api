@@ -7,8 +7,8 @@ import (
 )
 
 type PathData struct {
-	DomainId    uint64 `uri:"domainId"`
-	SubdomainId uint64 `uri:"subdomainId"`
+	DomainId    uint `uri:"domainId"`
+	SubdomainId uint `uri:"subdomainId"`
 }
 
 func ParsePath(c *gin.Context) (PathData, error) {

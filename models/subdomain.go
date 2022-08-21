@@ -3,9 +3,9 @@ package models
 import "gorm.io/gorm"
 
 type Subdomain struct {
-	Id       uint64 `json:"id" gorm:"not null;primaryKey"`
+	Id       uint   `json:"id" gorm:"not null;primaryKey"`
 	Name     string `json:"name" binding:"required,min=1" gorm:"not null;unique"`
-	DomainId uint64 `json:"domainId" gorm:"not null"`
+	DomainId uint   `json:"domainId" gorm:"not null"`
 	Domain   Domain `binding:"-"`
 	Ip       string `json:"ip" binding:"ipv4" gorm:"not null"`
 }

@@ -10,7 +10,7 @@ import (
 )
 
 type Domain struct {
-	Id         uint64      `json:"id" gorm:"not null;primaryKey"`
+	Id         uint        `json:"id" gorm:"not null;primaryKey"`
 	Name       string      `json:"name" binding:"min=1" gorm:"not null;unique"`
 	NameServer string      `json:"nameServer" binding:"min=1" gorm:"not null"`
 	NSIp       string      `json:"nsIp" binding:"ip" gorm:"not null"`
