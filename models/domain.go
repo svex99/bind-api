@@ -34,6 +34,12 @@ func (d *Domain) Create() error {
 			return err
 		}
 
+		baseRecord := Record{
+			Ttl:        d.Ttl,
+			Class:      "IN",
+			DomainName: d.Name,
+		}
+
 		// Create the SOA record for the domain in DB
 		serial, err := newSerial()
 		if err != nil {
@@ -41,11 +47,7 @@ func (d *Domain) Create() error {
 		}
 
 		soaRecord := SOARecord{
-			Record: Record{
-				Ttl:        d.Ttl,
-				Class:      "IN",
-				DomainName: d.Name,
-			},
+			Record:     baseRecord,
 			NameServer: d.NameServer,
 			Admin:      setting.App.BindAdmin,
 			Serial:     serial,
@@ -61,11 +63,7 @@ func (d *Domain) Create() error {
 
 		// Create the NS record for the domain in DB
 		nsRecord := NSRecord{
-			Record: Record{
-				Ttl:        d.Ttl,
-				Class:      "IN",
-				DomainName: d.Name,
-			},
+			Record:     baseRecord,
 			NameServer: d.NameServer,
 		}
 
@@ -75,13 +73,9 @@ func (d *Domain) Create() error {
 
 		// Create the A record for the name server in DB
 		aRecord := ARecord{
-			Record: Record{
-				Ttl:        d.Ttl,
-				Class:      "IN",
-				DomainName: d.Name,
-			},
-			Name: d.NameServer,
-			Ip:   d.NSIp,
+			Record: baseRecord,
+			Name:   d.NameServer,
+			Ip:     d.NSIp,
 		}
 
 		if err := tx.Create(&aRecord).Error; err != nil {
