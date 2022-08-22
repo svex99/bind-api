@@ -8,7 +8,7 @@ import (
 	"github.com/svex99/bind-api/handlers"
 	"github.com/svex99/bind-api/middlewares"
 	"github.com/svex99/bind-api/models"
-	"github.com/svex99/bind-api/utils/setting"
+	"github.com/svex99/bind-api/pkg/setting"
 )
 
 func main() {

@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	jwt "github.com/golang-jwt/jwt/v4"
 
-	"github.com/svex99/bind-api/utils/setting"
+	"github.com/svex99/bind-api/pkg/setting"
 )
 
 func GenerateToken(userId uint) (string, error) {

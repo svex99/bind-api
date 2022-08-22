@@ -5,7 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/svex99/bind-api/utils/setting"
+	"github.com/svex99/bind-api/pkg/setting"
+	"github.com/svex99/bind-api/services"
 	"gorm.io/gorm"
 )
 
@@ -49,7 +50,7 @@ func (d *Domain) Create() error {
 		soaRecord := SOARecord{
 			Record:     baseRecord,
 			NameServer: d.NameServer,
-			Admin:      setting.App.BindAdmin,
+			Admin:      setting.Bind.Admin,
 			Serial:     serial,
 			Refresh:    604800,
 			Retry:      86400,
@@ -83,7 +84,11 @@ func (d *Domain) Create() error {
 		}
 
 		// TODO: Set bind configuration files
-		// TODO: Reload bind service
+
+		// Reload the bind service
+		if err := services.Bind.Reload(); err != nil {
+			return err
+		}
 
 		return nil
 	})

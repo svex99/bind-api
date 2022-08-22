@@ -1,6 +1,9 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"github.com/svex99/bind-api/services"
+	"gorm.io/gorm"
+)
 
 type Subdomain struct {
 	Id       uint   `json:"id" gorm:"not null;primaryKey"`
@@ -42,7 +45,10 @@ func (s *Subdomain) Create() error {
 		}
 
 		// TODO: Set bind configuration files
-		// TODO: Reload bind service
+
+		if err := services.Bind.Reload(); err != nil {
+			return err
+		}
 
 		return nil
 	})

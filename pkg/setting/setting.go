@@ -9,12 +9,18 @@ import (
 type AppSetting struct {
 	JwtSecret         string
 	TokenHourLifespan int
-	BindCfgPath       string
-	BindDbsPath       string
-	BindAdmin         string
 }
 
 var App = &AppSetting{}
+
+type BindSetting struct {
+	ConfPath    string
+	RecordsPath string
+	Admin       string
+	ContainerId string
+}
+
+var Bind = &BindSetting{}
 
 var cfg *ini.File
 
@@ -26,6 +32,7 @@ func init() {
 	}
 
 	mapTo("app", App)
+	mapTo("bind", Bind)
 }
 
 func mapTo(section string, v interface{}) {

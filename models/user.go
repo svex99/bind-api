@@ -4,7 +4,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"github.com/svex99/bind-api/utils/token"
+	"github.com/svex99/bind-api/pkg/token"
 )
 
 type User struct {

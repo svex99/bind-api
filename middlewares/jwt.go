@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/svex99/bind-api/utils/token"
+	"github.com/svex99/bind-api/pkg/token"
 )
 
 func JWTAuth() gin.HandlerFunc {

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/svex99/bind-api/models"
-	"github.com/svex99/bind-api/utils/path"
+	"github.com/svex99/bind-api/pkg/path"
 )
 
 func ListDomains(c *gin.Context) {
