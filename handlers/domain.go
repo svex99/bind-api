@@ -89,20 +89,7 @@ func UpdateDomain(c *gin.Context) {
 		return
 	}
 
-	if domainForm.Name != "" {
-		domain.Name = domainForm.Name
-	}
-	if domainForm.NameServer != "" {
-		domain.NameServer = domainForm.NameServer
-	}
-	if domainForm.NSIp != "" {
-		domain.NSIp = domainForm.NSIp
-	}
-	if domainForm.Ttl != "" {
-		domain.Ttl = domainForm.Ttl
-	}
-
-	if err := models.DB.Save(&domain).Error; err != nil {
+	if err := domain.Update(&domainForm); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
@@ -123,14 +110,12 @@ func DeleteDomain(c *gin.Context) {
 
 	domain := models.Domain{Id: pathData.DomainId}
 
-	if err := models.DB.Delete(&domain).Error; err != nil {
+	if err := domain.Delete(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-
-	// TODO: Remove the domain from bind
 
 	c.JSON(http.StatusNoContent, gin.H{})
 }

@@ -10,9 +10,10 @@ import (
 )
 
 type BindService struct {
-	ctx         context.Context
-	DockerCli   *client.Client
-	ContainerId string
+	ctx          context.Context
+	DockerCli    *client.Client
+	ContainerId  string
+	ZoneFilePath string
 }
 
 var Bind = &BindService{}
@@ -27,6 +28,7 @@ func init() {
 	Bind.ctx = context.Background()
 	Bind.DockerCli = cli
 	Bind.ContainerId = setting.Bind.ContainerId
+	Bind.ZoneFilePath = setting.Bind.ConfPath + "named.conf.local"
 }
 
 func (bs *BindService) exec(command []string) error {

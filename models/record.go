@@ -1,11 +1,16 @@
 package models
 
+import (
+	"fmt"
+	"time"
+)
+
 type Record struct {
-	Id         uint   `json:"id" gorm:"primaryKey"`
-	Ttl        string `json:"ttl" binding:"min=2"`
-	Class      string `json:"class" binding:"min=1"`
-	DomainName string `json:"domainName" binding:"min=1"`
-	Domain     Domain `gorm:"references:Name;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Id       uint   `json:"id" gorm:"primaryKey"`
+	Ttl      string `json:"ttl" binding:"min=2"`
+	Class    string `json:"class" binding:"min=1"`
+	DomainId uint   `json:"domainId" binding:"min=1" gorm:"not null"`
+	Domain   Domain
 }
 
 type SOARecord struct {
@@ -43,3 +48,33 @@ type MXRecord struct {
 }
 
 // TODO: Add more types of records
+
+// Generates a new serial for the SOA record.
+// Generated serials follows the format YYYYMMDDNN where NN is a two digits identifier.
+func (soa *SOARecord) updateSerial() {
+	now := time.Now().UTC()
+	newSerial := uint(now.Year()*1_000_000 + int(now.Month())*10_000 + now.Day()*100)
+	serialsDiff := newSerial - soa.Serial
+
+	if serialsDiff < 99 {
+		soa.Serial = soa.Serial + 1
+	} else {
+		soa.Serial = newSerial
+	}
+}
+
+func (soa *SOARecord) String() string {
+	return fmt.Sprintf(
+		"@ %s SOA %s %s ( %d %d %d %d %d )",
+		soa.Class, soa.NameServer, soa.Admin,
+		soa.Serial, soa.Refresh, soa.Retry, soa.Expire, soa.Minimum,
+	)
+}
+
+func (ns *NSRecord) String() string {
+	return fmt.Sprintf("@ %s NS %s", ns.Class, ns.NameServer)
+}
+
+func (a *ARecord) String() string {
+	return fmt.Sprintf("%s %s A %s", a.Name, a.Class, a.Ip)
+}
