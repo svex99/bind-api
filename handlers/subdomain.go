@@ -122,7 +122,7 @@ func DeleteSubdomain(c *gin.Context) {
 
 	subdomain := models.Subdomain{Id: pathData.SubdomainId}
 
-	if err := models.DB.Delete(&subdomain, "domain_id = ?", pathData.DomainId).Error; err != nil {
+	if err := subdomain.Delete(pathData.DomainId); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
