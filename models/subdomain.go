@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/svex99/bind-api/pkg/file"
 	"github.com/svex99/bind-api/services"
 	"gorm.io/gorm"
 )
@@ -44,8 +45,12 @@ func (s *Subdomain) Create() error {
 			return err
 		}
 
-		// TODO: Set bind configuration files
+		// Set bind configuration files
+		if err := file.AddContent(s.Domain.getFilePath(), aRecord.String()); err != nil {
+			return err
+		}
 
+		// Reload bind service
 		if err := services.Bind.Reload(); err != nil {
 			return err
 		}

@@ -72,7 +72,6 @@ func NewSubdomain(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get the domain id directly from the uri
 	subdomain.DomainId = pathData.DomainId
 
 	if err := subdomain.Create(); err != nil {
