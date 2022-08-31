@@ -54,9 +54,8 @@ type MXRecord struct {
 func (soa *SOARecord) updateSerial() {
 	now := time.Now().UTC()
 	newSerial := uint(now.Year()*1_000_000 + int(now.Month())*10_000 + now.Day()*100)
-	serialsDiff := newSerial - soa.Serial
 
-	if serialsDiff < 99 {
+	if soa.Serial >= newSerial {
 		soa.Serial = soa.Serial + 1
 	} else {
 		soa.Serial = newSerial
@@ -65,16 +64,16 @@ func (soa *SOARecord) updateSerial() {
 
 func (soa *SOARecord) String() string {
 	return fmt.Sprintf(
-		"@ %s SOA %s %s ( %d %d %d %d %d )",
+		"@ %s SOA %s %s ( %d %d %d %d %d )\n",
 		soa.Class, soa.NameServer, soa.Admin,
 		soa.Serial, soa.Refresh, soa.Retry, soa.Expire, soa.Minimum,
 	)
 }
 
 func (ns *NSRecord) String() string {
-	return fmt.Sprintf("@ %s NS %s", ns.Class, ns.NameServer)
+	return fmt.Sprintf("@ %s NS %s\n", ns.Class, ns.NameServer)
 }
 
 func (a *ARecord) String() string {
-	return fmt.Sprintf("%s %s A %s", a.Name, a.Class, a.Ip)
+	return fmt.Sprintf("%s %s A %s\n", a.Name, a.Class, a.Ip)
 }
