@@ -2,10 +2,9 @@ package models
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
 
+	"github.com/svex99/bind-api/pkg/file"
 	"github.com/svex99/bind-api/pkg/setting"
 	"github.com/svex99/bind-api/services"
 	"gorm.io/gorm"
@@ -35,7 +34,17 @@ func (d *Domain) getFilePath() string {
 	return setting.Bind.RecordsPath + "db." + d.Name
 }
 
-// temporal method to get the zone string for a domain
+// Returns the ORIGIN string for the domain.
+func (d *Domain) getOriginString() string {
+	return fmt.Sprintf("$ORIGIN %s.\n", d.Name)
+}
+
+// Returns the TTL string for the domain.
+func (d *Domain) getTtlString() string {
+	return fmt.Sprintf("TTL %s\n", d.Ttl)
+}
+
+// Returns the zone string for the domain.
 func (d *Domain) getZoneString() string {
 	return fmt.Sprintf(
 		"zone \"%s\" {\n\ttype master;\n\tfile \"/var/lib/bind/db.%s\";\n};\n",
@@ -103,19 +112,9 @@ func (d *Domain) Create() error {
 
 		defer domainFile.Close()
 
-		origin := fmt.Sprintf("$ORIGIN %s.", d.Name)
-		ttl := fmt.Sprintf("$TTL %s", d.Ttl)
-		soa := fmt.Sprintf(
-			"@ %s SOA %s %s ( %d %d %d %d %d )",
-			soaRecord.Class, soaRecord.NameServer, soaRecord.Admin,
-			soaRecord.Serial, soaRecord.Refresh, soaRecord.Retry, soaRecord.Expire, soaRecord.Minimum,
-		)
-		ns := fmt.Sprintf("@ %s NS %s", nsRecord.Class, nsRecord.NameServer)
-		a := fmt.Sprintf("%s %s A %s", aRecord.Name, aRecord.Class, aRecord.Ip)
-
-		if _, err := domainFile.WriteString(
-			fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n", origin, ttl, soa, ns, a),
-		); err != nil {
+		if _, err := domainFile.WriteString(fmt.Sprintf(
+			"%s%s%s%s%s", d.getOriginString(), d.getTtlString(), soaRecord.String(), nsRecord.String(), aRecord.String(),
+		)); err != nil {
 			return err
 		}
 
@@ -140,7 +139,25 @@ func (d *Domain) Create() error {
 }
 
 func (d *Domain) Update(form *UpdateDomainForm) error {
-	oldDom := d
+	if err := DB.Preload("SOARecord").Find(d).Error; err != nil {
+		return err
+	}
+
+	nsRecord := &NSRecord{}
+	if err := DB.Where("domain_id = ? AND name_server = ?", d.Id, d.NameServer).First(nsRecord).Error; err != nil {
+		return err
+	}
+
+	aRecord := &ARecord{}
+	if err := DB.Where("domain_id = ? AND name = ? and ip = ?", d.Id, d.NameServer, d.NSIp).First(aRecord).Error; err != nil {
+		return err
+	}
+
+	oldOriginString := d.getOriginString()
+	oldTtlString := d.getTtlString()
+	oldSOAString := d.SOARecord.String()
+	oldNSString := nsRecord.String()
+	oldAString := aRecord.String()
 
 	if form.Name != "" {
 		d.Name = form.Name
@@ -161,11 +178,7 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 			return err
 		}
 
-		// Get and update SOA record in DB
-		if err := tx.Preload("SOARecord").Find(d).Error; err != nil {
-			return err
-		}
-
+		// Update SOA record in DB
 		d.SOARecord.updateSerial()
 		d.SOARecord.NameServer = d.NameServer
 
@@ -173,24 +186,14 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 			return err
 		}
 
-		// Get and update NS record in DB
-		nsRecord := &NSRecord{}
-		if err := tx.Where("domain_id = ? AND name_server = ?", d.Id, oldDom.NameServer).Find(nsRecord).Error; err != nil {
-			return err
-		}
-
+		// Update NS record in DB
 		nsRecord.NameServer = d.NameServer
 
 		if err := tx.Save(nsRecord).Error; err != nil {
 			return err
 		}
 
-		// Get and update name server A record in DB
-		aRecord := &ARecord{}
-		if err := tx.Where("domain_id = ? AND name = ? and ip = ?", d.Id, oldDom.Name, oldDom.NSIp).Find(aRecord).Error; err != nil {
-			return err
-		}
-
+		// Update A record in DB
 		aRecord.Name = d.NameServer
 		aRecord.Ip = d.NSIp
 
@@ -198,25 +201,31 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 			return err
 		}
 
-		// TODO: Update bind configuration files
-		// domainFile, err := os.OpenFile(setting.Bind.RecordsPath+"db."+d.Name, os.O_RDWR|os.O_APPEND, 0644)
-		// if err != nil {
-		// 	return err
-		// }
+		// Update bind configuration files
+		if err := file.ReplaceContent(d.getFilePath(), oldOriginString, d.getOriginString(), false); err != nil {
+			return err
+		}
 
-		// defer domainFile.Close()
+		if err := file.ReplaceContent(d.getFilePath(), oldTtlString, d.getTtlString(), false); err != nil {
+			return err
+		}
 
-		// zoneFile, err := os.OpenFile(setting.Bind.ConfPath+"db."+oldDom.Name, os.O_RDWR|os.O_APPEND, 0644)
-		// if err != nil {
-		// 	return err
-		// }
+		if err := file.ReplaceContent(d.getFilePath(), oldSOAString, d.SOARecord.String(), true); err != nil {
+			return err
+		}
 
-		// defer zoneFile.Close()
+		if err := file.ReplaceContent(d.getFilePath(), oldNSString, nsRecord.String(), false); err != nil {
+			return err
+		}
+
+		if err := file.ReplaceContent(d.getFilePath(), oldAString, aRecord.String(), false); err != nil {
+			return err
+		}
 
 		// Reload bind service
-		// if err := services.Bind.Reload(); err != nil {
-		// 	return err
-		// }
+		if err := services.Bind.Reload(); err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -240,21 +249,7 @@ func (d *Domain) Delete() error {
 			return err
 		}
 
-		// Load the zones file content and update its data
-		zoneContent, err := ioutil.ReadFile(services.Bind.ZoneFilePath)
-		if err != nil {
-			return err
-		}
-
-		updatedContent := strings.Replace(string(zoneContent), d.getZoneString(), "", 1)
-
-		// Rename old zone file for backup
-		if err := os.Rename(services.Bind.ZoneFilePath, services.Bind.ZoneFilePath+".bak"); err != nil {
-			return err
-		}
-
-		// Create updated zone file
-		if err := os.WriteFile(services.Bind.ZoneFilePath, []byte(updatedContent), 0666); err != nil {
+		if err := file.ReplaceContent(services.Bind.ZoneFilePath, d.getZoneString(), "", true); err != nil {
 			return err
 		}
 
