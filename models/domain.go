@@ -139,7 +139,7 @@ func (d *Domain) Create() error {
 }
 
 func (d *Domain) Update(form *UpdateDomainForm) error {
-	if err := DB.Preload("SOARecord").Find(d).Error; err != nil {
+	if err := DB.Preload("SOARecord").First(d).Error; err != nil {
 		return err
 	}
 
@@ -234,7 +234,7 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 func (d *Domain) Delete() error {
 	return DB.Transaction(func(tx *gorm.DB) error {
 		// Load domain to have access to its Name in getFilePath()
-		if err := tx.Find(d).Error; err != nil {
+		if err := tx.First(d).Error; err != nil {
 			return err
 		}
 

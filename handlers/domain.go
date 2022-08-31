@@ -73,13 +73,6 @@ func UpdateDomain(c *gin.Context) {
 
 	domain := models.Domain{Id: pathData.DomainId}
 
-	if err := models.DB.First(&domain).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
 	var domainForm models.UpdateDomainForm
 
 	if err := c.ShouldBindJSON(&domainForm); err != nil {
