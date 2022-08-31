@@ -28,3 +28,18 @@ func ReplaceContent(filePath, old, new string, backup bool) error {
 
 	return nil
 }
+
+func AddContent(filePath, content string) error {
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	if _, err := file.WriteString(content); err != nil {
+		return err
+	}
+
+	return nil
+}
