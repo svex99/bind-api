@@ -85,6 +85,7 @@ func NewSubdomain(c *gin.Context) {
 }
 
 func UpdateSubdomain(c *gin.Context) {
+	// TODO: Handle update to subdomain of the name server
 	pathData, err := path.ParsePath(c)
 
 	if err != nil {
@@ -102,28 +103,12 @@ func UpdateSubdomain(c *gin.Context) {
 
 	subdomain := models.Subdomain{Id: pathData.SubdomainId}
 
-	if err := models.DB.First(&subdomain, "domain_id = ?", pathData.DomainId).Error; err != nil {
+	if err := subdomain.Update(pathData.DomainId, &subdomainForm); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-
-	if subdomainForm.Name != "" {
-		subdomain.Name = subdomainForm.Name
-	}
-	if subdomainForm.Ip != "" {
-		subdomain.Ip = subdomainForm.Ip
-	}
-
-	if err := models.DB.Save(&subdomain).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// TODO: Update the subdomain in bind
 
 	c.JSON(http.StatusOK, subdomain)
 }

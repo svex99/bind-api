@@ -58,3 +58,67 @@ func (s *Subdomain) Create() error {
 		return nil
 	})
 }
+
+func (s *Subdomain) Update(domainId uint, form *UpdateSubdomainForm) error {
+	if err := DB.Preload("Domain").First(s, "domain_id = ?", domainId).Error; err != nil {
+		return err
+	}
+
+	// Get SOA record of the domain, needed to update serial
+	if err := DB.Preload("SOARecord").First(&s.Domain).Error; err != nil {
+		return err
+	}
+
+	// Get A record of the subdomain
+	aRecord := &ARecord{}
+	if err := DB.First(aRecord, "domain_id = ?", domainId, "name = ?", s.Name, "ip = ?", s.Ip).Error; err != nil {
+		return err
+	}
+
+	oldSOAString := s.Domain.SOARecord.String()
+	oldAString := aRecord.String()
+
+	if form.Name != "" {
+		s.Name = form.Name
+	}
+	if form.Ip != "" {
+		s.Ip = form.Ip
+	}
+
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(s).Error; err != nil {
+			return err
+		}
+
+		// Update A record in DB
+		aRecord.Name = s.Name
+		aRecord.Ip = s.Ip
+
+		if err := tx.Save(aRecord).Error; err != nil {
+			return err
+		}
+
+		// Update SOA record in DB
+		s.Domain.SOARecord.updateSerial()
+
+		if err := tx.Save(&s.Domain.SOARecord).Error; err != nil {
+			return err
+		}
+
+		// Update bind configuration files
+		if err := file.ReplaceContent(s.Domain.getFilePath(), oldSOAString, s.Domain.SOARecord.String(), true); err != nil {
+			return err
+		}
+
+		if err := file.ReplaceContent(s.Domain.getFilePath(), oldAString, aRecord.String(), false); err != nil {
+			return err
+		}
+
+		// Reload bind service with new configuration
+		if err := services.Bind.Reload(); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
