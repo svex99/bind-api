@@ -13,7 +13,7 @@ var DB *gorm.DB
 func ConnectDatabase() {
 	var err error
 
-	DB, err = gorm.Open(sqlite.Open("bind-api.db"), &gorm.Config{})
+	DB, err = gorm.Open(sqlite.Open("data/bind-api.db"), &gorm.Config{})
 	DB.Exec("PRAGMA foreign_keys=ON")
 
 	if err != nil {

@@ -26,7 +26,7 @@ var cfg *ini.File
 
 func init() {
 	var err error
-	cfg, err = ini.Load("app.ini")
+	cfg, err = ini.Load("data/app.ini")
 	if err != nil {
 		log.Fatalf("Error parsing app.ini file: %v", err)
 	}
