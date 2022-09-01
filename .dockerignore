@@ -1,2 +1,18 @@
-docks/
-.vscode/
+# vscode and git files
+.vscode
+.git
+.gitignore
+
+# development folders
+build
+data
+docks
+
+# develoment files
+*.ini
+*.db
+docker-compose.yml
+.dockerignore
+makefile
+*.md
+!README.md

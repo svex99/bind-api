@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  bind-server:
+    image: docker.uclv.cu/ubuntu/bind9
+    container_name: bind-server
+    environment:
+      - TZ=UTC
+      - BIND9_USER=bind
+    ports:
+      - "30053:53"
+    volumes:
+      - ./data/bind/conf/named.conf.local:/etc/bind/named.conf.local
+      - ./data/bind/conf/named.conf.options:/etc/bind/named.conf.options
+      - ./data/bind/cache:/var/cache/bind
+      - ./data/bind/records:/var/lib/bind
+    networks:
+      bind-services:
+        ipv4_address: 172.30.10.1
+
+  bind-api:
+    depends_on:
+      - bind-server
+    image: bind-api
+    container_name: bind-api
+    build:
+      dockerfile: dokcs/api.Dockerfile
+      context: .
+    ports:
+      - 2020:2020
+    volumes:
+      - ./data/:/go/src/data
+    dns:
+      - 172.30.10.1
+    networks:
+      bind-services:
+        ipv4_address: 172.30.10.2
+
+networks:
+  bind-services:
+    name: bind-services
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.10.0/16
