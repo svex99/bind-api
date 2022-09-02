@@ -26,7 +26,21 @@ func (s *Subdomain) Create() error {
 			return err
 		}
 
-		if err := tx.Preload("Domain").Find(s).Error; err != nil {
+		// Preload the Domain and its SOA record
+		if err := tx.Preload("Domain").First(s).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Preload("SOARecord").First(&s.Domain).Error; err != nil {
+			return err
+		}
+
+		oldSOAString := s.Domain.SOARecord.String()
+
+		// Update the SOA record serial and save on DB
+		s.Domain.SOARecord.updateSerial()
+
+		if err := tx.Save(s.Domain.SOARecord).Error; err != nil {
 			return err
 		}
 
@@ -45,7 +59,11 @@ func (s *Subdomain) Create() error {
 			return err
 		}
 
-		// Set bind configuration files
+		// Update bind configuration files
+		if err := file.ReplaceContent(s.Domain.getFilePath(), oldSOAString, s.Domain.SOARecord.String(), true); err != nil {
+			return err
+		}
+
 		if err := file.AddContent(s.Domain.getFilePath(), aRecord.String()); err != nil {
 			return err
 		}
