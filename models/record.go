@@ -77,3 +77,7 @@ func (ns *NSRecord) String() string {
 func (a *ARecord) String() string {
 	return fmt.Sprintf("%s %s A %s\n", a.Name, a.Class, a.Ip)
 }
+
+func (mx *MXRecord) String() string {
+	return fmt.Sprintf("@ %s MX %d %s\n", mx.Class, mx.Priority, mx.EmailServer)
+}

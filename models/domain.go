@@ -20,6 +20,7 @@ type Domain struct {
 	SOARecord  *SOARecord  `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	NSRecords  []NSRecord  `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	ARecords   []ARecord   `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	MXRecords  []MXRecord  `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 type UpdateDomainForm struct {
@@ -41,7 +42,7 @@ func (d *Domain) getOriginString() string {
 
 // Returns the TTL string for the domain.
 func (d *Domain) getTtlString() string {
-	return fmt.Sprintf("TTL %s\n", d.Ttl)
+	return fmt.Sprintf("$TTL %s\n", d.Ttl)
 }
 
 // Returns the zone string for the domain.
