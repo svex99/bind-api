@@ -46,6 +46,7 @@ func main() {
 	protected.POST("domains/:domainId/emails", handlers.NewEmail)
 	protected.GET("domains/:domainId/emails/:resourceId", handlers.GetEmail)
 	protected.PATCH("domains/:domainId/emails/:resourceId", handlers.UpdateEmail)
+	protected.DELETE("domains/:domainId/emails/:resourceId", handlers.DeleteEmail)
 
 	router.Run(":2020")
 }

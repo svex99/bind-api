@@ -176,3 +176,71 @@ func (e *Email) Update(domainId uint, form *UpdateEmailForm) error {
 		return nil
 	})
 }
+
+func (e *Email) Delete(domainId uint) error {
+	mxRecord := &MXRecord{Record: Record{Id: e.Id}}
+
+	if err := DB.Preload("Domain").First(mxRecord, "domain_id = ?", domainId).Error; err != nil {
+		return err
+	}
+
+	domain := &mxRecord.Domain
+
+	if err := DB.Preload("SOARecord").First(domain).Error; err != nil {
+		return err
+	}
+
+	soaRecord := domain.SOARecord
+
+	aRecord := &ARecord{}
+
+	if err := DB.First(aRecord, &ARecord{
+		Record: Record{
+			DomainId: domain.Id,
+		},
+		Name: mxRecord.EmailServer,
+	}).Error; err != nil {
+		return err
+	}
+
+	oldMXString := mxRecord.String()
+	oldSOAString := soaRecord.String()
+	oldAString := aRecord.String()
+
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(mxRecord).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Delete(aRecord).Error; err != nil {
+			return err
+		}
+
+		// Update SOA serial in DB
+		soaRecord.updateSerial()
+
+		if err := tx.Save(soaRecord).Error; err != nil {
+			return err
+		}
+
+		// Update bind configuration files
+		if err := file.ReplaceContent(domain.getFilePath(), oldSOAString, soaRecord.String(), true); err != nil {
+			return err
+		}
+
+		if err := file.ReplaceContent(domain.getFilePath(), oldMXString, "", false); err != nil {
+			return err
+		}
+
+		if err := file.ReplaceContent(domain.getFilePath(), oldAString, "", false); err != nil {
+			return err
+		}
+
+		// Reload bind service with new configuration
+		if err := services.Bind.Reload(); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}

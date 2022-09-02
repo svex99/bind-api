@@ -111,3 +111,21 @@ func UpdateEmail(c *gin.Context) {
 
 	c.JSON(http.StatusOK, email)
 }
+
+func DeleteEmail(c *gin.Context) {
+	pathData, err := path.ParsePath(c)
+	if err != nil {
+		return
+	}
+
+	email := models.Email{Id: pathData.ResourceId}
+
+	if err := email.Delete(pathData.DomainId); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, gin.H{})
+}
