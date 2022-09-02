@@ -34,6 +34,32 @@ func ListEmails(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"emails": emails})
 }
 
+func GetEmail(c *gin.Context) {
+	pathData, err := path.ParsePath(c)
+	if err != nil {
+		return
+	}
+
+	var email models.Email
+
+	if err := models.DB.Model(
+		&models.ARecord{},
+	).Select(
+		"mx_records.id, mx_records.priority, mx_records.email_server as name, a_records.ip",
+	).Joins(
+		"left join mx_records on mx_records.email_server = a_records.name",
+	).First(
+		&email, "mx_records.domain_id = ?", pathData.DomainId, "mx_records.id = ?", pathData.ResourceId,
+	).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, email)
+}
+
 func NewEmail(c *gin.Context) {
 	pathData, err := path.ParsePath(c)
 	if err != nil {

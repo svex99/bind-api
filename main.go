@@ -44,6 +44,7 @@ func main() {
 	// email handlers
 	protected.GET("/domains/:domainId/emails", handlers.ListEmails)
 	protected.POST("domains/:domainId/emails", handlers.NewEmail)
+	protected.GET("domains/:domainId/emails/:resourceId", handlers.GetEmail)
 	protected.PATCH("domains/:domainId/emails/:resourceId", handlers.UpdateEmail)
 
 	router.Run(":2020")
