@@ -16,16 +16,13 @@ func ListSubdomains(c *gin.Context) {
 		return
 	}
 
-	domain := models.Domain{Id: pathData.DomainId}
+	var subdomains []models.Subdomain
 
-	if err := models.DB.First(&domain).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	if err := models.DB.Preload("Subdomains").First(&domain).Error; err != nil {
+	if err := models.DB.Model(
+		&models.ARecord{},
+	).Where(
+		&models.ARecord{Record: models.Record{DomainId: pathData.DomainId}},
+	).Find(&subdomains).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": err.Error(),
 		})
@@ -33,7 +30,7 @@ func ListSubdomains(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"subdomains": domain.Subdomains,
+		"subdomains": subdomains,
 	})
 }
 
@@ -44,9 +41,13 @@ func GetSubdomain(c *gin.Context) {
 		return
 	}
 
-	subdomain := models.Subdomain{Id: pathData.SubdomainId}
+	var subdomain models.Subdomain
 
-	if err := models.DB.First(&subdomain, "domain_id = ?", pathData.DomainId).Error; err != nil {
+	if err := models.DB.Model(
+		&models.ARecord{},
+	).Where(
+		&models.ARecord{Record: models.Record{Id: pathData.ResourceId, DomainId: pathData.DomainId}},
+	).First(&subdomain).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
@@ -72,9 +73,7 @@ func NewSubdomain(c *gin.Context) {
 		return
 	}
 
-	subdomain.DomainId = pathData.DomainId
-
-	if err := subdomain.Create(); err != nil {
+	if err := subdomain.Create(pathData.DomainId); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
@@ -101,7 +100,7 @@ func UpdateSubdomain(c *gin.Context) {
 		return
 	}
 
-	subdomain := models.Subdomain{Id: pathData.SubdomainId}
+	subdomain := models.Subdomain{Id: pathData.ResourceId}
 
 	if err := subdomain.Update(pathData.DomainId, &subdomainForm); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -120,7 +119,7 @@ func DeleteSubdomain(c *gin.Context) {
 		return
 	}
 
-	subdomain := models.Subdomain{Id: pathData.SubdomainId}
+	subdomain := models.Subdomain{Id: pathData.ResourceId}
 
 	if err := subdomain.Delete(pathData.DomainId); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

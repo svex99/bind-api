@@ -26,7 +26,6 @@ func ConnectDatabase() {
 	DB.AutoMigrate(
 		&User{},
 		&Domain{},
-		&Subdomain{},
 		&SOARecord{},
 		&NSRecord{},
 		&ARecord{},

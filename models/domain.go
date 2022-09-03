@@ -11,16 +11,15 @@ import (
 )
 
 type Domain struct {
-	Id         uint        `json:"id" gorm:"not null;primaryKey"`
-	Name       string      `json:"name" binding:"min=1" gorm:"not null;unique"`
-	NameServer string      `json:"nameServer" binding:"min=1" gorm:"not null"`
-	NSIp       string      `json:"nsIp" binding:"ip" gorm:"not null"`
-	Ttl        string      `json:"ttl" binding:"min=1" gorm:"not null"`
-	Subdomains []Subdomain `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	SOARecord  *SOARecord  `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	NSRecords  []NSRecord  `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	ARecords   []ARecord   `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	MXRecords  []MXRecord  `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Id         uint       `json:"id" gorm:"not null;primaryKey"`
+	Name       string     `json:"name" binding:"min=1" gorm:"not null;unique"`
+	NameServer string     `json:"nameServer" binding:"min=1" gorm:"not null"`
+	NSIp       string     `json:"nsIp" binding:"ip" gorm:"not null"`
+	Ttl        string     `json:"ttl" binding:"min=1" gorm:"not null"`
+	SOARecord  *SOARecord `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	NSRecords  []NSRecord `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	ARecords   []ARecord  `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	MXRecords  []MXRecord `json:"-" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 type UpdateDomainForm struct {

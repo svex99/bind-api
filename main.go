@@ -38,9 +38,9 @@ func main() {
 	// subdomain handlers
 	protected.GET("/domains/:domainId/subdomains", handlers.ListSubdomains)
 	protected.POST("/domains/:domainId/subdomains", handlers.NewSubdomain)
-	protected.GET("/domains/:domainId/subdomains/:subdomainId", handlers.GetSubdomain)
-	protected.PATCH("/domains/:domainId/subdomains/:subdomainId", handlers.UpdateSubdomain)
-	protected.DELETE("/domains/:domainId/subdomains/:subdomainId", handlers.DeleteSubdomain)
+	protected.GET("/domains/:domainId/subdomains/:resourceId", handlers.GetSubdomain)
+	protected.PATCH("/domains/:domainId/subdomains/:resourceId", handlers.UpdateSubdomain)
+	protected.DELETE("/domains/:domainId/subdomains/:resourceId", handlers.DeleteSubdomain)
 	// email handlers
 	protected.GET("/domains/:domainId/emails", handlers.ListEmails)
 	protected.POST("domains/:domainId/emails", handlers.NewEmail)
