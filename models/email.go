@@ -125,17 +125,18 @@ func (e *Email) Update(domainId uint, form *UpdateEmailForm) error {
 
 	if form.Priority != 0 {
 		mxRecord.Priority = form.Priority
-		e.Priority = mxRecord.Priority
 	}
 	if form.Name != "" {
 		mxRecord.EmailServer = form.Name
 		aRecord.Name = form.Name
-		e.Name = mxRecord.EmailServer
 	}
 	if form.Ip != "" {
 		aRecord.Ip = form.Ip
-		e.Ip = aRecord.Ip
 	}
+
+	e.Priority = mxRecord.Priority
+	e.Name = mxRecord.EmailServer
+	e.Ip = aRecord.Ip
 
 	return DB.Transaction(func(tx *gorm.DB) error {
 		// Update SOA record serial and save in DB
