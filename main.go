@@ -47,6 +47,12 @@ func main() {
 	protected.GET("domains/:domainId/emails/:resourceId", handlers.GetEmail)
 	protected.PATCH("domains/:domainId/emails/:resourceId", handlers.UpdateEmail)
 	protected.DELETE("domains/:domainId/emails/:resourceId", handlers.DeleteEmail)
+	// TXT handlers
+	protected.GET("/domains/:domainId/TXTrecords", handlers.ListTXTRecords)
+	protected.POST("domains/:domainId/TXTrecords", handlers.NewTXTRecord)
+	protected.GET("domains/:domainId/TXTrecords/:resourceId", handlers.GetTXTRecord)
+	protected.PATCH("domains/:domainId/TXTrecords/:resourceId", handlers.UpdateTXTRecord)
+	protected.DELETE("domains/:domainId/TXTrecords/:resourceId", handlers.DeleteTXTRecord)
 
 	router.Run(":2020")
 }

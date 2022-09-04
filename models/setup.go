@@ -30,5 +30,6 @@ func ConnectDatabase() {
 		&NSRecord{},
 		&ARecord{},
 		&MXRecord{},
+		&TXTRecord{},
 	)
 }
