@@ -36,8 +36,6 @@ func (e *Email) Create(domainId uint) error {
 		// }
 
 		baseRecord := Record{
-			Ttl:      domain.Ttl,
-			Class:    "IN",
 			DomainId: domain.Id,
 		}
 

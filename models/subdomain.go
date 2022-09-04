@@ -31,8 +31,6 @@ func (s *Subdomain) Create(domainId uint) error {
 		// Create the A record in DB
 		aRecord := ARecord{
 			Record: Record{
-				Ttl:      domain.Ttl,
-				Class:    "IN",
 				DomainId: domain.Id,
 			},
 			Name: s.Name,

@@ -52,6 +52,14 @@ func (d *Domain) getZoneString() string {
 	)
 }
 
+func (d *Domain) GetWithSOA() (*SOARecord, error) {
+	if err := DB.Preload("SOARecord").First(d).Error; err != nil {
+		return nil, err
+	}
+
+	return d.SOARecord, nil
+}
+
 // Creates a new domain.
 // This should create the necessary records and reload the bind configuration.
 func (d *Domain) Create() error {
@@ -62,8 +70,6 @@ func (d *Domain) Create() error {
 		}
 
 		baseRecord := Record{
-			Ttl:      d.Ttl,
-			Class:    "IN",
 			DomainId: d.Id,
 		}
 
