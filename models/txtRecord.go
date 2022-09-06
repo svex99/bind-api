@@ -22,14 +22,12 @@ func (txt *TXTRecord) String() string {
 }
 
 func (txt *TXTRecord) Create() error {
-
 	domain := &Domain{Id: txt.DomainId}
 
-	if err := DB.Preload("SOARecord").First(domain).Error; err != nil {
+	soaRecord, err := domain.GetWithSOA()
+	if err != nil {
 		return err
 	}
-
-	soaRecord := domain.SOARecord
 
 	oldSOAString := soaRecord.String()
 
@@ -72,7 +70,7 @@ func (txt *TXTRecord) Update(form *UpdateTXTRecordForm) error {
 		return err
 	}
 
-	if err := DB.Debug().Where(txt).First(txt).Error; err != nil {
+	if err := DB.Where(txt).First(txt).Error; err != nil {
 		return err
 	}
 
