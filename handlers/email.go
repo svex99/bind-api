@@ -19,7 +19,7 @@ func ListEmails(c *gin.Context) {
 	if err := models.DB.Model(
 		&models.ARecord{},
 	).Select(
-		"mx_records.id, mx_records.priority, mx_records.email_server, a_records.ip",
+		"mx_records.id, mx_records.priority, mx_records.email_server as name, a_records.ip",
 	).Joins(
 		"left join mx_records on mx_records.email_server = a_records.name",
 	).Find(
