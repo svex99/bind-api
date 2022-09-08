@@ -151,7 +151,9 @@ func TestUpdateSubdomain(t *testing.T) {
 func TestDeleteSubdomain(t *testing.T) {
 	tests.WithTestDatabase(
 		t, func() {
-			createSubdomains()
+			if err := createSubdomains(); err != nil {
+				t.Fatal(err)
+			}
 
 			router := api.SetupRouter()
 
@@ -164,7 +166,7 @@ func TestDeleteSubdomain(t *testing.T) {
 
 			var count int64
 			models.DB.Model(
-				&models.Domain{},
+				&models.ARecord{},
 			).Where(
 				&models.ARecord{Record: models.Record{Id: 4, DomainId: 2}},
 			).Count(&count)
