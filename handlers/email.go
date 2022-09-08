@@ -49,7 +49,7 @@ func GetEmail(c *gin.Context) {
 	).Joins(
 		"left join mx_records on mx_records.email_server = a_records.name",
 	).First(
-		&email, "mx_records.domain_id = ?", pathData.DomainId, "mx_records.id = ?", pathData.ResourceId,
+		&email, "mx_records.domain_id = ? AND mx_records.id = ?", pathData.DomainId, pathData.ResourceId,
 	).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
