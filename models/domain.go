@@ -192,24 +192,18 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 		}
 
 		// Update SOA record in DB
-		d.SOARecord.updateSerial()
-		d.SOARecord.NameServer = d.NameServer
+		soaRecord.updateSerial()
 
-		if err := tx.Save(&d.SOARecord).Error; err != nil {
+		if err := tx.Save(soaRecord).Error; err != nil {
 			return err
 		}
 
 		// Update NS record in DB
-		nsRecord.NameServer = d.NameServer
-
 		if err := tx.Save(nsRecord).Error; err != nil {
 			return err
 		}
 
 		// Update A record in DB
-		aRecord.Name = d.NameServer
-		aRecord.Ip = d.NSIp
-
 		if err := tx.Save(aRecord).Error; err != nil {
 			return err
 		}
@@ -231,7 +225,7 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 			return err
 		}
 
-		if err := file.ReplaceContent(d.getFilePath(), oldSOAString, d.SOARecord.String(), true); err != nil {
+		if err := file.ReplaceContent(d.getFilePath(), oldSOAString, soaRecord.String(), true); err != nil {
 			return err
 		}
 
