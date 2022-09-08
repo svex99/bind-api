@@ -145,7 +145,8 @@ func (d *Domain) Create() error {
 }
 
 func (d *Domain) Update(form *UpdateDomainForm) error {
-	if err := DB.Preload("SOARecord").First(d).Error; err != nil {
+	soaRecord, err := d.GetWithSOA()
+	if err != nil {
 		return err
 	}
 
@@ -161,6 +162,8 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 
 	oldOriginString := d.getOriginString()
 	oldTtlString := d.getTtlString()
+	oldFilePath := d.getFilePath()
+	oldZoneString := d.getZoneString()
 	oldSOAString := d.SOARecord.String()
 	oldNSString := nsRecord.String()
 	oldAString := aRecord.String()
@@ -170,9 +173,13 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 	}
 	if form.NameServer != "" {
 		d.NameServer = form.NameServer
+		soaRecord.NameServer = form.NameServer
+		nsRecord.NameServer = form.NameServer
+		aRecord.Name = form.NameServer
 	}
 	if form.NSIp != "" {
 		d.NSIp = form.NSIp
+		aRecord.Ip = form.NSIp
 	}
 	if form.Ttl != "" {
 		d.Ttl = form.Ttl
@@ -208,6 +215,14 @@ func (d *Domain) Update(form *UpdateDomainForm) error {
 		}
 
 		// Update bind configuration files
+		if err := os.Rename(oldFilePath, d.getFilePath()); err != nil {
+			return err
+		}
+
+		if err := file.ReplaceContent(services.Bind.ZoneFilePath, oldZoneString, d.getZoneString(), true); err != nil {
+			return err
+		}
+
 		if err := file.ReplaceContent(d.getFilePath(), oldOriginString, d.getOriginString(), false); err != nil {
 			return err
 		}

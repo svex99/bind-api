@@ -89,8 +89,6 @@ func UpdateDomain(c *gin.Context) {
 		return
 	}
 
-	// TODO: Update the domain in bind
-
 	c.JSON(http.StatusOK, domain)
 }
 
