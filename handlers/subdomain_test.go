@@ -45,132 +45,121 @@ func assertEqualSubdomains(t *testing.T, sd1, sd2 *models.Subdomain, strict bool
 }
 
 func TestListSubdomains(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createSubdomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createSubdomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains/2/subdomains", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			var resp map[string][]*models.Subdomain
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains/2/subdomains", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assert.Len(t, resp["subdomains"], 3) // two subdomains plus the name server
-			assertEqualSubdomains(t, subdomains[0], resp["subdomains"][1], true)
+	var resp map[string][]*models.Subdomain
+	json.Unmarshal(w.Body.Bytes(), &resp)
 
-		},
-	)
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Len(t, resp["subdomains"], 3) // two subdomains plus the name server
+	assertEqualSubdomains(t, subdomains[0], resp["subdomains"][1], true)
 }
 
 func TestGetSubdomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createSubdomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createSubdomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains/2/subdomains/4", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			resp := &models.Subdomain{}
-			json.Unmarshal(w.Body.Bytes(), resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains/2/subdomains/4", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualSubdomains(t, subdomains[1], resp, true)
-		},
-	)
+	resp := &models.Subdomain{}
+	json.Unmarshal(w.Body.Bytes(), resp)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualSubdomains(t, subdomains[1], resp, true)
 }
 
 func TestNewSubdomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createDomains(); err != nil {
-				t.Fatal(err)
-			}
-			router := api.SetupRouter()
+	tests.SetupTestDatabase(t)
 
-			jsonData, _ := json.Marshal(subdomains[0])
+	if err := createDomains(); err != nil {
+		t.Fatal(err)
+	}
+	router := api.SetupRouter()
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/api/domains/2/subdomains", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
+	jsonData, _ := json.Marshal(subdomains[0])
 
-			resp := &models.Subdomain{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/domains/2/subdomains", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
-			assertEqualSubdomains(t, subdomains[0], resp, false)
-		},
-	)
+	resp := &models.Subdomain{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	assertEqualSubdomains(t, subdomains[0], resp, false)
 }
 
 func TestUpdateSubdomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createSubdomains(); err != nil {
-				return
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createSubdomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			updatedSubdomain := models.UpdateSubdomainForm{
-				Name: "new-subdomain-name",
-				Ip:   "123.123.123.123",
-			}
+	router := api.SetupRouter()
 
-			expectedSubdomain := &models.Subdomain{
-				Id:   4,
-				Name: updatedSubdomain.Name,
-				Ip:   updatedSubdomain.Ip,
-			}
+	updatedSubdomain := models.UpdateSubdomainForm{
+		Name: "new-subdomain-name",
+		Ip:   "123.123.123.123",
+	}
 
-			jsonData, _ := json.Marshal(updatedSubdomain)
+	expectedSubdomain := &models.Subdomain{
+		Id:   4,
+		Name: updatedSubdomain.Name,
+		Ip:   updatedSubdomain.Ip,
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("PATCH", "/api/domains/2/subdomains/4", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
+	jsonData, _ := json.Marshal(updatedSubdomain)
 
-			resp := &models.Subdomain{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("PATCH", "/api/domains/2/subdomains/4", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualSubdomains(t, expectedSubdomain, resp, true)
-		},
-	)
+	resp := &models.Subdomain{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualSubdomains(t, expectedSubdomain, resp, true)
 }
 
 func TestDeleteSubdomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createSubdomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createSubdomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", "/api/domains/2/subdomains/4", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
-			assert.Empty(t, w.Body.String())
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/api/domains/2/subdomains/4", nil)
+	router.ServeHTTP(w, req)
 
-			var count int64
-			models.DB.Model(
-				&models.ARecord{},
-			).Where(
-				&models.ARecord{Record: models.Record{Id: 4, DomainId: 2}},
-			).Count(&count)
-			assert.Equal(t, int64(0), count)
-		},
-	)
+	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	assert.Empty(t, w.Body.String())
+
+	var count int64
+	models.DB.Model(
+		&models.ARecord{},
+	).Where(
+		&models.ARecord{Record: models.Record{Id: 4, DomainId: 2}},
+	).Count(&count)
+	assert.Equal(t, int64(0), count)
 }

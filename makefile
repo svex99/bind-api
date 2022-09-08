@@ -30,5 +30,5 @@ down-test:
 
 test:
 	make up-test
-	go test ./...
+	go test ./... -run=$(run)
 	make down-test

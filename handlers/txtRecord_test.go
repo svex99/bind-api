@@ -45,134 +45,123 @@ func assertEqualTXTRecords(t *testing.T, txt1, txt2 *models.TXTRecord, strict bo
 }
 
 func TestListTXTRecords(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createTXTRecords(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createTXTRecords(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains/2/txtRecords", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			var resp map[string][]*models.TXTRecord
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains/2/txtRecords", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assert.Len(t, resp["txtRecords"], 2)
-			assertEqualTXTRecords(t, txtRecords[1], resp["txtRecords"][1], true)
+	var resp map[string][]*models.TXTRecord
+	json.Unmarshal(w.Body.Bytes(), &resp)
 
-		},
-	)
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Len(t, resp["txtRecords"], 2)
+	assertEqualTXTRecords(t, txtRecords[1], resp["txtRecords"][1], true)
 }
 
 func TestGetTXTRecord(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createTXTRecords(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createTXTRecords(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains/2/txtRecords/2", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			resp := &models.TXTRecord{}
-			json.Unmarshal(w.Body.Bytes(), resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains/2/txtRecords/2", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualTXTRecords(t, txtRecords[1], resp, true)
-		},
-	)
+	resp := &models.TXTRecord{}
+	json.Unmarshal(w.Body.Bytes(), resp)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualTXTRecords(t, txtRecords[1], resp, true)
 }
 
 func TestNewTXTRecord(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createDomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createDomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			jsonData, _ := json.Marshal(txtRecords[0])
+	router := api.SetupRouter()
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/api/domains/2/txtRecords", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
+	jsonData, _ := json.Marshal(txtRecords[0])
 
-			resp := &models.TXTRecord{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/domains/2/txtRecords", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
-			assertEqualTXTRecords(t, txtRecords[0], resp, false)
-		},
-	)
+	resp := &models.TXTRecord{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	assertEqualTXTRecords(t, txtRecords[0], resp, false)
 }
 
 func TestUpdateTXTRecord(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createTXTRecords(); err != nil {
-				return
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createTXTRecords(); err != nil {
+		return
+	}
 
-			updatedTXTRecord := models.TXTRecord{
-				Value: "Updated txt value",
-			}
+	router := api.SetupRouter()
 
-			expectedTXTRecord := &models.TXTRecord{
-				Record: models.Record{
-					Id:       2,
-					DomainId: 2,
-				},
-				Value: "Updated txt value",
-			}
+	updatedTXTRecord := models.TXTRecord{
+		Value: "Updated txt value",
+	}
 
-			jsonData, _ := json.Marshal(updatedTXTRecord)
-
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("PATCH", "/api/domains/2/txtRecords/2", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
-
-			resp := &models.TXTRecord{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
-
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualTXTRecords(t, expectedTXTRecord, resp, true)
+	expectedTXTRecord := &models.TXTRecord{
+		Record: models.Record{
+			Id:       2,
+			DomainId: 2,
 		},
-	)
+		Value: "Updated txt value",
+	}
+
+	jsonData, _ := json.Marshal(updatedTXTRecord)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("PATCH", "/api/domains/2/txtRecords/2", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
+
+	resp := &models.TXTRecord{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualTXTRecords(t, expectedTXTRecord, resp, true)
 }
 
 func TestDeleteTXTRecord(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createTXTRecords(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createTXTRecords(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", "/api/domains/2/txtRecords/2", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
-			assert.Empty(t, w.Body.String())
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/api/domains/2/txtRecords/2", nil)
+	router.ServeHTTP(w, req)
 
-			var count int64
-			models.DB.Model(
-				&models.TXTRecord{},
-			).Where(
-				&models.TXTRecord{Record: models.Record{Id: 2, DomainId: 2}},
-			).Count(&count)
-			assert.Equal(t, int64(0), count)
-		},
-	)
+	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	assert.Empty(t, w.Body.String())
+
+	var count int64
+	models.DB.Model(
+		&models.TXTRecord{},
+	).Where(
+		&models.TXTRecord{Record: models.Record{Id: 2, DomainId: 2}},
+	).Count(&count)
+	assert.Equal(t, int64(0), count)
 }

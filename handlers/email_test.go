@@ -46,135 +46,124 @@ func assertEqualEmails(t *testing.T, e1, e2 *models.Email, strict bool) {
 }
 
 func TestListEmails(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createEmails(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createEmails(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains/2/emails", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			var resp map[string][]*models.Email
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains/2/emails", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assert.Len(t, resp["emails"], 2)
-			assertEqualEmails(t, emails[1], resp["emails"][1], true)
+	var resp map[string][]*models.Email
+	json.Unmarshal(w.Body.Bytes(), &resp)
 
-		},
-	)
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Len(t, resp["emails"], 2)
+	assertEqualEmails(t, emails[1], resp["emails"][1], true)
 }
 
 func TestGetEmail(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createEmails(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createEmails(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains/2/emails/2", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			resp := &models.Email{}
-			json.Unmarshal(w.Body.Bytes(), resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains/2/emails/2", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualEmails(t, emails[1], resp, true)
-		},
-	)
+	resp := &models.Email{}
+	json.Unmarshal(w.Body.Bytes(), resp)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualEmails(t, emails[1], resp, true)
 }
 
 func TestNewEmail(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createDomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createDomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			jsonData, _ := json.Marshal(emails[0])
+	router := api.SetupRouter()
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/api/domains/2/emails", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
+	jsonData, _ := json.Marshal(emails[0])
 
-			resp := &models.Email{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/domains/2/emails", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
-			assertEqualEmails(t, emails[0], resp, false)
-		},
-	)
+	resp := &models.Email{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	assertEqualEmails(t, emails[0], resp, false)
 }
 
 func TestUpdateEmail(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createEmails(); err != nil {
-				return
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createEmails(); err != nil {
+		return
+	}
 
-			updatedEmail := models.UpdateEmailForm{
-				Priority: 500,
-				Name:     "new-subdomain-name",
-				Ip:       "123.123.123.123",
-			}
+	router := api.SetupRouter()
 
-			expectedEmail := &models.Email{
-				Id:       2,
-				Priority: updatedEmail.Priority,
-				Name:     updatedEmail.Name,
-				Ip:       updatedEmail.Ip,
-			}
+	updatedEmail := models.UpdateEmailForm{
+		Priority: 500,
+		Name:     "new-subdomain-name",
+		Ip:       "123.123.123.123",
+	}
 
-			jsonData, _ := json.Marshal(updatedEmail)
+	expectedEmail := &models.Email{
+		Id:       2,
+		Priority: updatedEmail.Priority,
+		Name:     updatedEmail.Name,
+		Ip:       updatedEmail.Ip,
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("PATCH", "/api/domains/2/emails/2", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
+	jsonData, _ := json.Marshal(updatedEmail)
 
-			resp := &models.Email{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("PATCH", "/api/domains/2/emails/2", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualEmails(t, expectedEmail, resp, true)
-		},
-	)
+	resp := &models.Email{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualEmails(t, expectedEmail, resp, true)
 }
 
 func TestDeleteEmail(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createEmails(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createEmails(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", "/api/domains/2/emails/2", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
-			assert.Empty(t, w.Body.String())
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/api/domains/2/emails/2", nil)
+	router.ServeHTTP(w, req)
 
-			var count int64
-			models.DB.Model(
-				&models.MXRecord{},
-			).Where(
-				&models.MXRecord{Record: models.Record{Id: 2, DomainId: 2}},
-			).Count(&count)
-			assert.Equal(t, int64(0), count)
-		},
-	)
+	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	assert.Empty(t, w.Body.String())
+
+	var count int64
+	models.DB.Model(
+		&models.MXRecord{},
+	).Where(
+		&models.MXRecord{Record: models.Record{Id: 2, DomainId: 2}},
+	).Count(&count)
+	assert.Equal(t, int64(0), count)
 }

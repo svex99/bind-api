@@ -48,133 +48,123 @@ func getDomainFromDB(domainId uint) *models.Domain {
 }
 
 func TestListDomains(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createDomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createDomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			var resp map[string][]*models.Domain
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assert.Len(t, resp["domains"], 3)
-			assertEqualDomains(t, domains[0], resp["domains"][0])
+	var resp map[string][]*models.Domain
+	json.Unmarshal(w.Body.Bytes(), &resp)
 
-		},
-	)
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Len(t, resp["domains"], 3)
+	assertEqualDomains(t, domains[0], resp["domains"][0])
+
 }
 
 func TestGetDomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createDomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createDomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/domains/1", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			resp := &models.Domain{}
-			json.Unmarshal(w.Body.Bytes(), resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/domains/1", nil)
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualDomains(t, domains[0], resp)
-		},
-	)
+	resp := &models.Domain{}
+	json.Unmarshal(w.Body.Bytes(), resp)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualDomains(t, domains[0], resp)
 }
 
 func TestNewDomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			router := api.SetupRouter()
+	tests.SetupTestDatabase(t)
 
-			jsonData, _ := json.Marshal(domains[0])
+	router := api.SetupRouter()
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/api/domains", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
+	jsonData, _ := json.Marshal(domains[0])
 
-			resp := &models.Domain{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/domains", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
-			assertEqualDomains(t, domains[0], resp)
+	resp := &models.Domain{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
 
-			assertEqualDomains(t, domains[0], getDomainFromDB(1))
-		},
-	)
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	assertEqualDomains(t, domains[0], resp)
+
+	assertEqualDomains(t, domains[0], getDomainFromDB(1))
 }
 
 func TestUpdateDomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createDomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createDomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			updatedDomain := models.UpdateDomainForm{
-				Name:       "new-name.com",
-				NameServer: "new-name-server",
-				NSIp:       "123.123.123.123",
-				Ttl:        "10d",
-			}
+	router := api.SetupRouter()
 
-			expectedDomain := &models.Domain{
-				Id:         1,
-				Name:       updatedDomain.Name,
-				NameServer: updatedDomain.NameServer,
-				NSIp:       updatedDomain.NSIp,
-				Ttl:        updatedDomain.Ttl,
-			}
+	updatedDomain := models.UpdateDomainForm{
+		Name:       "new-name.com",
+		NameServer: "new-name-server",
+		NSIp:       "123.123.123.123",
+		Ttl:        "10d",
+	}
 
-			jsonData, _ := json.Marshal(updatedDomain)
+	expectedDomain := &models.Domain{
+		Id:         1,
+		Name:       updatedDomain.Name,
+		NameServer: updatedDomain.NameServer,
+		NSIp:       updatedDomain.NSIp,
+		Ttl:        updatedDomain.Ttl,
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("PATCH", "/api/domains/1", bytes.NewBuffer(jsonData))
-			router.ServeHTTP(w, req)
+	jsonData, _ := json.Marshal(updatedDomain)
 
-			resp := &models.Domain{}
-			json.Unmarshal(w.Body.Bytes(), &resp)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("PATCH", "/api/domains/1", bytes.NewBuffer(jsonData))
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			assertEqualDomains(t, expectedDomain, resp)
+	resp := &models.Domain{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
 
-			assertEqualDomains(t, expectedDomain, getDomainFromDB(1))
-		},
-	)
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assertEqualDomains(t, expectedDomain, resp)
+
+	assertEqualDomains(t, expectedDomain, getDomainFromDB(1))
 }
 
 func TestDeleteDomain(t *testing.T) {
-	tests.WithTestDatabase(
-		t, func() {
-			if err := createDomains(); err != nil {
-				t.Fatal(err)
-			}
+	tests.SetupTestDatabase(t)
 
-			router := api.SetupRouter()
+	if err := createDomains(); err != nil {
+		t.Fatal(err)
+	}
 
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", "/api/domains/1", nil)
-			router.ServeHTTP(w, req)
+	router := api.SetupRouter()
 
-			assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
-			assert.Empty(t, w.Body.String())
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/api/domains/1", nil)
+	router.ServeHTTP(w, req)
 
-			var count int64
-			models.DB.Model(&models.Domain{}).Where(&models.Domain{Id: 1}).Count(&count)
-			assert.Equal(t, int64(0), count)
-		},
-	)
+	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	assert.Empty(t, w.Body.String())
+
+	var count int64
+	models.DB.Model(&models.Domain{}).Where(&models.Domain{Id: 1}).Count(&count)
+	assert.Equal(t, int64(0), count)
 }
