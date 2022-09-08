@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func WithTestDatabase(t *testing.T, testFunction func() error) {
+func WithTestDatabase(t *testing.T, testFunction func()) {
 	DB, err := gorm.Open(sqlite.Open("data/bind-api-test.db"), &gorm.Config{
 		AllowGlobalUpdate: true,
 	})
@@ -56,7 +56,5 @@ func WithTestDatabase(t *testing.T, testFunction func() error) {
 		t.Fatal(err)
 	}
 
-	if err := testFunction(); err != nil {
-		t.Fatal(err)
-	}
+	testFunction()
 }

@@ -19,11 +19,14 @@ var domains = []*models.Domain{
 	{Name: "domain3.com", NameServer: "ns3", NSIp: "3.3.3.3", Ttl: "3d"},
 }
 
-func createDomains() {
+func createDomains() error {
 	for _, domain := range domains {
-		domain.Create()
-		// models.DB.Create(domain)
+		if err := domain.Create(); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func assertEqualDomains(t *testing.T, d1, d2 *models.Domain) {
@@ -46,8 +49,10 @@ func getDomainFromDB(domainId uint) *models.Domain {
 
 func TestListDomains(t *testing.T) {
 	tests.WithTestDatabase(
-		t, func() error {
-			createDomains()
+		t, func() {
+			if err := createDomains(); err != nil {
+				t.Fatal(err)
+			}
 
 			router := api.SetupRouter()
 
@@ -62,15 +67,16 @@ func TestListDomains(t *testing.T) {
 			assert.Len(t, resp["domains"], 3)
 			assertEqualDomains(t, domains[0], resp["domains"][0])
 
-			return nil
 		},
 	)
 }
 
 func TestGetDomain(t *testing.T) {
 	tests.WithTestDatabase(
-		t, func() error {
-			createDomains()
+		t, func() {
+			if err := createDomains(); err != nil {
+				t.Fatal(err)
+			}
 
 			router := api.SetupRouter()
 
@@ -83,15 +89,13 @@ func TestGetDomain(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
 			assertEqualDomains(t, domains[0], resp)
-
-			return nil
 		},
 	)
 }
 
 func TestNewDomain(t *testing.T) {
 	tests.WithTestDatabase(
-		t, func() error {
+		t, func() {
 			router := api.SetupRouter()
 
 			jsonData, _ := json.Marshal(domains[0])
@@ -107,16 +111,16 @@ func TestNewDomain(t *testing.T) {
 			assertEqualDomains(t, domains[0], resp)
 
 			assertEqualDomains(t, domains[0], getDomainFromDB(1))
-
-			return nil
 		},
 	)
 }
 
 func TestUpdateDomain(t *testing.T) {
 	tests.WithTestDatabase(
-		t, func() error {
-			createDomains()
+		t, func() {
+			if err := createDomains(); err != nil {
+				t.Fatal(err)
+			}
 
 			router := api.SetupRouter()
 
@@ -148,16 +152,16 @@ func TestUpdateDomain(t *testing.T) {
 			assertEqualDomains(t, expectedDomain, resp)
 
 			assertEqualDomains(t, expectedDomain, getDomainFromDB(1))
-
-			return nil
 		},
 	)
 }
 
 func TestDeleteDomain(t *testing.T) {
 	tests.WithTestDatabase(
-		t, func() error {
-			createDomains()
+		t, func() {
+			if err := createDomains(); err != nil {
+				t.Fatal(err)
+			}
 
 			router := api.SetupRouter()
 
@@ -171,8 +175,6 @@ func TestDeleteDomain(t *testing.T) {
 			var count int64
 			models.DB.Model(&models.Domain{}).Where(&models.Domain{Id: 1}).Count(&count)
 			assert.Equal(t, int64(0), count)
-
-			return nil
 		},
 	)
 }
