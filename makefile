@@ -20,3 +20,15 @@ build-api:
 
 run-api:
 	docker container run -it --rm -p 2020:2020 -v $(PWD)/data:/go/src/data bind-api
+
+up-test:clean
+	mkdir -p handlers/data
+	cp -r data/ handlers/
+
+down-test:
+	rm -rf handlers/data/
+
+test:
+	make up-test
+	go test ./...
+	make down-test
