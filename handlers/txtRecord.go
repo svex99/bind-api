@@ -24,7 +24,7 @@ func ListTXTRecords(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"TXTrecords": txtRecords})
+	c.JSON(http.StatusOK, gin.H{"txtRecords": txtRecords})
 }
 
 func GetTXTRecord(c *gin.Context) {
@@ -70,7 +70,7 @@ func NewTXTRecord(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, txtRecord)
+	c.JSON(http.StatusCreated, txtRecord)
 }
 
 func UpdateTXTRecord(c *gin.Context) {
