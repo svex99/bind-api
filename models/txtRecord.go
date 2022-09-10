@@ -18,7 +18,7 @@ type UpdateTXTRecordForm struct {
 }
 
 func (txt *TXTRecord) String() string {
-	return fmt.Sprintf("@ IN TXT %s\n", txt.Value)
+	return fmt.Sprintf("@ IN TXT \"%s\"\n", txt.Value)
 }
 
 func (txt *TXTRecord) Create() error {
