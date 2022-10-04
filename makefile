@@ -30,5 +30,5 @@ down-test:
 
 test:
 	make up-test
-	go test ./... -run=$(run)
+	go test ./... -run $(test) $(pkg)
 	make down-test
