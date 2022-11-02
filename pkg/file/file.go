@@ -43,3 +43,16 @@ func AddContent(filePath, content string) error {
 
 	return nil
 }
+
+func MakeBackup(filename string) func() {
+	backup := filename + ".bak"
+	bak_err := os.Rename(filename, backup)
+	rollback := func() {
+		if bak_err == nil {
+			if err := os.Rename(backup, filename); err != nil {
+				panic(err)
+			}
+		}
+	}
+	return rollback
+}

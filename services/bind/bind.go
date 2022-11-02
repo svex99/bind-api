@@ -17,12 +17,13 @@ import (
 )
 
 type BindService struct {
-	ctx          context.Context
-	Mutex        *sync.Mutex
-	DockerCli    *client.Client
-	ContainerId  string
-	ZoneFilePath string
-	Domains      map[string]*parser.DomainConf
+	ctx           context.Context
+	Mutex         *sync.Mutex
+	DockerCli     *client.Client
+	ContainerId   string
+	ZonesFilePath string
+	BindConf      *parser.BindConf
+	Domains       map[string]*parser.DomainConf
 }
 
 var Service = &BindService{}
@@ -38,7 +39,14 @@ func init() {
 	Service.Mutex = &sync.Mutex{}
 	Service.DockerCli = cli
 	Service.ContainerId = setting.Bind.ContainerId
-	Service.ZoneFilePath = setting.Bind.ConfPath + "named.conf.local"
+	Service.ZonesFilePath = setting.Bind.ConfPath + "named.conf.local"
+
+	Service.BindConf, err = Service.parseBindConf(Service.ZonesFilePath)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf(">>> Loaded %d zone(s) from %s\n", len(Service.BindConf.Zones), Service.ZonesFilePath)
+
 	Service.Domains = make(map[string]*parser.DomainConf)
 
 	recordsDir, err := fs.ReadDir(os.DirFS(setting.Bind.RecordsPath), ".")
@@ -63,13 +71,27 @@ func init() {
 	}
 }
 
+func (bs *BindService) parseBindConf(filename string) (*parser.BindConf, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	bindConf, err := parser.ConfParser.Parse(filename, file)
+	if err != nil {
+		return nil, err
+	}
+
+	return bindConf, nil
+}
+
 func (bs *BindService) parseDomainConf(filename string) (*parser.DomainConf, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	dConf, err := parser.Parser.Parse(filename, file)
+	dConf, err := parser.ZoneParser.Parse(filename, file)
 	if err != nil {
 		return nil, err
 	}
@@ -102,14 +124,32 @@ func (bm *BindService) CreateDomain(data *schemas.DomainData) (*parser.DomainCon
 		},
 	}
 
-	if err := dConf.WriteToDisk(dConf.GetFilename()); err != nil {
+	rollbackDConf, err := dConf.WriteToDisk(dConf.GetFilename())
+	if err != nil {
+		rollbackDConf()
 		return nil, err
 	}
 
-	if err := bm.Reload(); err != nil {
+	bindConf := *bm.BindConf
+
+	if err := bindConf.AddZone(dConf); err != nil {
+		rollbackDConf()
 		return nil, err
 	}
 
+	rollbackBindConf, err := bindConf.WriteToDisk(bm.ZonesFilePath)
+	if err != nil {
+		rollbackDConf()
+		return nil, err
+	}
+
+	if err := bm.Reconfig(); err != nil {
+		rollbackDConf()
+		rollbackBindConf()
+		return nil, err
+	}
+
+	bm.BindConf = &bindConf
 	bm.Domains[dConf.Origin] = dConf
 
 	return dConf, nil
@@ -153,11 +193,14 @@ func (bm *BindService) UpdateDomain(targetOrigin string, data *schemas.DomainDat
 
 	targetNS.NameServer = data.NameServer
 
-	if err := targetDConf.WriteToDisk(targetDConf.GetFilename()); err != nil {
+	rollback, err := targetDConf.WriteToDisk(targetDConf.GetFilename())
+	if err != nil {
+		rollback()
 		return nil, err
 	}
 
-	if err := bm.Reload(); err != nil {
+	if err := bm.ReloadZone(targetOrigin); err != nil {
+		rollback()
 		return nil, err
 	}
 
@@ -175,14 +218,33 @@ func (bm *BindService) DeleteDomain(targetOrigin string) error {
 		return fmt.Errorf("domain %s does not exist", targetOrigin)
 	}
 
-	if err := targetDConf.DeleteFromDisk(targetDConf.GetFilename()); err != nil {
+	rollbackDConf, err := targetDConf.DeleteFromDisk(targetDConf.GetFilename())
+	if err != nil {
+		rollbackDConf()
+		return err
+	}
+
+	bindConf := *bm.BindConf
+
+	if err := bindConf.DeleteZone(targetDConf); err != nil {
+		rollbackDConf()
+		return err
+	}
+
+	rollbackBindConf, err := bindConf.WriteToDisk(bm.ZonesFilePath)
+	if err != nil {
+		rollbackDConf()
+		rollbackBindConf()
 		return err
 	}
 
 	if err := bm.Reload(); err != nil {
+		rollbackDConf()
+		rollbackBindConf()
 		return err
 	}
 
+	bm.BindConf = &bindConf
 	delete(bm.Domains, targetOrigin)
 
 	return nil
@@ -230,7 +292,18 @@ func (bs *BindService) exec(command []string) error {
 	return nil
 }
 
-// Reloads the configuration files for the bind service running inside a container
+// Runs `rndc reconfig` in the BIND server.
+// Reloads the configuration file and loads new zones, but does not reload existing zone files even if they have changed.
+func (bs *BindService) Reconfig() error {
+	return bs.exec([]string{"rndc", "reconfig"})
+}
+
+// Runs `rndc reload` in the BIND server
 func (bs *BindService) Reload() error {
-	return bs.exec([]string{"service", "named", "reload"})
+	return bs.exec([]string{"rndc", "reload"})
+}
+
+// Runs `rndc reload {zone}` in the BIND server
+func (bs *BindService) ReloadZone(zone string) error {
+	return bs.exec([]string{"rndc", "reload", zone})
 }

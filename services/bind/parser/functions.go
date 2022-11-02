@@ -5,9 +5,13 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/svex99/bind-api/pkg/file"
 )
 
-func (dc *DomainConf) WriteToDisk(filename string) error {
+// Writes the zone configuration to a plain text file.
+// Returns a function that rollbacks the process.
+func (dc *DomainConf) WriteToDisk(filename string) (func(), error) {
 	dc.UpdateSerial()
 
 	content := []string{
@@ -24,24 +28,24 @@ func (dc *DomainConf) WriteToDisk(filename string) error {
 	}
 
 	// Create a backup of config if file exists
-	_ = os.Rename(filename, filename+".bak")
+	rollback := file.MakeBackup(filename)
 
 	if err := os.WriteFile(filename, []byte(strings.Join(content, "\n")), 0666); err != nil {
-		return err
+		return rollback, err
 	}
 
-	return nil
+	return rollback, nil
 }
 
-func (dc *DomainConf) DeleteFromDisk(filename string) error {
+func (dc *DomainConf) DeleteFromDisk(filename string) (func(), error) {
 	// Create a backup of config if file exists
-	_ = os.Rename(filename, filename+".bak")
+	rollback := file.MakeBackup(filename)
 
 	if err := os.Remove(filename); err != nil {
-		return err
+		return rollback, err
 	}
 
-	return nil
+	return rollback, nil
 }
 
 func (dc *DomainConf) GetRecordIndex(hash uint) (int, error) {
@@ -77,7 +81,8 @@ func (dc *DomainConf) AddRecord(newRecord Record) error {
 
 	dc.Records = append(dc.Records, newRecord)
 
-	if err := dc.WriteToDisk(dc.GetFilename()); err != nil {
+	if rollback, err := dc.WriteToDisk(dc.GetFilename()); err != nil {
+		rollback()
 		return err
 	}
 
@@ -92,7 +97,8 @@ func (dc *DomainConf) UpdateRecord(targetHash uint, updateRecord Record) error {
 
 	dc.Records[targetIndex] = updateRecord
 
-	if err := dc.WriteToDisk(dc.GetFilename()); err != nil {
+	if rollback, err := dc.WriteToDisk(dc.GetFilename()); err != nil {
+		rollback()
 		return err
 	}
 
@@ -107,7 +113,8 @@ func (dc *DomainConf) DeleteRecord(targetHash uint) error {
 
 	dc.Records = append(dc.Records[:targetIndex], dc.Records[targetIndex+1:]...)
 
-	if err := dc.WriteToDisk(dc.GetFilename()); err != nil {
+	if rollback, err := dc.WriteToDisk(dc.GetFilename()); err != nil {
+		rollback()
 		return err
 	}
 

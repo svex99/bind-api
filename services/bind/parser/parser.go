@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	Lexer = lexer.MustSimple([]lexer.SimpleRule{
+	ZoneLexer = lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Directive", Pattern: `\$(ORIGIN|TTL)`},
 		{Name: "Keyword", Pattern: `@`},
 		{Name: "RType", Pattern: `IN|SOA|NS|A|MX|TXT|PTR`},
@@ -25,8 +25,8 @@ var (
 		{Name: "Whitespace", Pattern: `[ \t\r]+`},
 		{Name: "NewLine", Pattern: `[\n]+`},
 	})
-	Parser = participle.MustBuild[DomainConf](
-		participle.Lexer(Lexer),
+	ZoneParser = participle.MustBuild[DomainConf](
+		participle.Lexer(ZoneLexer),
 		participle.Union[Record](NSRecord{}, ARecord{}, MXRecord{}, TXTRecord{}, CNAMERecord{}),
 		participle.Elide("Whitespace", "Comment"),
 		participle.Unquote("String"),
