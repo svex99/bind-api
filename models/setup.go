@@ -27,12 +27,12 @@ func ConnectDatabase() {
 
 	if err := DB.AutoMigrate(
 		&User{},
-		&Domain{},
-		&SOARecord{},
-		&NSRecord{},
-		&ARecord{},
-		&MXRecord{},
-		&TXTRecord{},
+		// &Domain{},
+		// &SOARecord{},
+		// &NSRecord{},
+		// &ARecord{},
+		// &MXRecord{},
+		// &TXTRecord{},
 	); err != nil {
 		log.Fatal(err)
 	}

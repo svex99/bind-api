@@ -1,23 +1,24 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/svex99/bind-api/models"
-	"github.com/svex99/bind-api/pkg/path"
+	"github.com/svex99/bind-api/schemas"
+	"github.com/svex99/bind-api/services/bind"
+	"github.com/svex99/bind-api/services/bind/parser"
 )
 
 func ListDomains(c *gin.Context) {
-	// TODO: implement pagination
-	var domains []models.Domain
+	bind.Service.Mutex.Lock()
+	defer bind.Service.Mutex.Unlock()
 
-	if err := models.DB.Model(&models.Domain{}).Find(&domains).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
+	domains := []*parser.DomainConf{}
+
+	for _, domain := range bind.Service.Domains {
+		domains = append(domains, domain)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -26,85 +27,59 @@ func ListDomains(c *gin.Context) {
 }
 
 func GetDomain(c *gin.Context) {
-	pathData, err := path.ParsePath(c)
+	bind.Service.Mutex.Lock()
+	defer bind.Service.Mutex.Unlock()
 
-	if err != nil {
+	origin := c.Param("origin")
+
+	dConf, ok := bind.Service.Domains[origin]
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("domain %s does not exist", origin)})
 		return
 	}
 
-	domain := models.Domain{Id: pathData.DomainId}
-
-	if err := models.DB.First(&domain).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, domain)
+	c.JSON(http.StatusOK, dConf)
 }
 
 func NewDomain(c *gin.Context) {
-	var domain models.Domain
+	var data schemas.DomainData
 
-	if err := c.ShouldBindJSON(&domain); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := domain.Create(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+	dConf, err := bind.Service.CreateDomain(&data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, domain)
+	c.JSON(http.StatusCreated, dConf)
 }
 
 func UpdateDomain(c *gin.Context) {
-	pathData, err := path.ParsePath(c)
+	var data schemas.DomainData
 
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	dConf, err := bind.Service.UpdateDomain(data.Origin, &data)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	domain := models.Domain{Id: pathData.DomainId}
-
-	var domainForm models.UpdateDomainForm
-
-	if err := c.ShouldBindJSON(&domainForm); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	if err := domain.Update(&domainForm); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, domain)
+	c.JSON(http.StatusOK, dConf)
 }
 
 func DeleteDomain(c *gin.Context) {
-	pathData, err := path.ParsePath(c)
+	origin := c.Param("origin")
 
-	if err != nil {
-		return
-	}
-
-	domain := models.Domain{Id: pathData.DomainId}
-
-	if err := domain.Delete(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+	if err := bind.Service.DeleteDomain(origin); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
