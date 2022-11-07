@@ -111,8 +111,8 @@ func (bm *BindService) CreateDomain(data *schemas.DomainData) (*parser.DomainCon
 			Minimum:    data.Minimum,
 		},
 		Records: []parser.Record{
-			parser.NSRecord{NameServer: data.NameServer},
-			parser.ARecord{Name: data.NameServer, Ip: data.NSIp},
+			parser.NSRecord{NameServer: data.NameServer, Type: "NS"},
+			parser.ARecord{Name: data.NameServer, Ip: data.NSIp, Type: "A"},
 		},
 	}
 
