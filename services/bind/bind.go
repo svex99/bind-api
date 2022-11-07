@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -49,25 +48,18 @@ func init() {
 
 	Service.Domains = make(map[string]*parser.DomainConf)
 
-	recordsDir, err := fs.ReadDir(os.DirFS(setting.Bind.RecordsPath), ".")
-	if err != nil {
-		panic(err)
-	}
-
 	fmt.Println(">>> Loading BIND9 domain files")
-	for _, entry := range recordsDir {
-		name := entry.Name()
+	for _, zone := range Service.BindConf.Zones {
+		filename := zone.File[strings.LastIndex(zone.File, "/")+1:]
 
-		if !entry.IsDir() && strings.HasPrefix(name, "db.") && !strings.HasSuffix(name, ".bak") {
-			dConf, err := Service.parseDomainConf(setting.Bind.RecordsPath + entry.Name())
-			if err != nil {
-				fmt.Printf("Error loading %s: %s", name, err)
-				continue
-			}
-
-			Service.Domains[dConf.Origin] = dConf
-			fmt.Println("Loaded domain file", name)
+		dConf, err := Service.parseDomainConf(setting.Bind.LibPath + filename)
+		if err != nil {
+			fmt.Printf("Error loading %s: %s", filename, err)
+			continue
 		}
+
+		Service.Domains[dConf.Origin] = dConf
+		fmt.Println("Loaded domain file", filename)
 	}
 }
 
@@ -166,6 +158,8 @@ func (bm *BindService) UpdateDomain(targetOrigin string, data *schemas.DomainDat
 
 	targetDConf := *targetDConfPointer
 
+	// Get the name server
+	fmt.Println(parser.NSRecord{NameServer: targetDConf.SOARecord.NameServer})
 	indexNS, err := targetDConf.GetRecordIndex(parser.NSRecord{NameServer: targetDConf.SOARecord.NameServer}.GetHash())
 	if err != nil {
 		return nil, err
@@ -178,6 +172,7 @@ func (bm *BindService) UpdateDomain(targetOrigin string, data *schemas.DomainDat
 			aRecord := targetDConf.Records[i].(parser.ARecord)
 			if aRecord.Name == targetDConf.SOARecord.NameServer {
 				aRecord.Name = data.NameServer
+				targetDConf.Records[i] = aRecord
 			}
 		}
 	}
@@ -192,6 +187,7 @@ func (bm *BindService) UpdateDomain(targetOrigin string, data *schemas.DomainDat
 	targetDConf.SOARecord.Minimum = data.Minimum
 
 	targetNS.NameServer = data.NameServer
+	targetDConf.Records[indexNS] = targetNS
 
 	rollback, err := targetDConf.WriteToDisk(targetDConf.GetFilename())
 	if err != nil {

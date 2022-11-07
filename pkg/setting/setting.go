@@ -15,7 +15,7 @@ var App = &AppSetting{}
 
 type BindSetting struct {
 	ConfPath    string
-	RecordsPath string
+	LibPath     string
 	Admin       string
 	ContainerId string
 }
@@ -26,7 +26,7 @@ var cfg *ini.File
 
 func init() {
 	var err error
-	cfg, err = ini.Load("data/app.ini")
+	cfg, err = ini.Load("data/api/app.ini")
 	if err != nil {
 		log.Fatalf("Error parsing app.ini file: %v", err)
 	}

@@ -41,9 +41,7 @@ func (dc *DomainConf) DeleteFromDisk(filename string) (func(), error) {
 	// Create a backup of config if file exists
 	rollback := file.MakeBackup(filename)
 
-	if err := os.Remove(filename); err != nil {
-		return rollback, err
-	}
+	// File is already deleted when made the backup, since it's renamed.
 
 	return rollback, nil
 }

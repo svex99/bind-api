@@ -43,7 +43,7 @@ type DomainConf struct {
 
 // TODO: Do not return path from string concatenation
 func (dc *DomainConf) GetFilename() string {
-	return fmt.Sprintf("%sdb.%s", setting.Bind.RecordsPath, dc.Origin)
+	return fmt.Sprintf("%sdb.%s", setting.Bind.LibPath, dc.Origin)
 }
 
 type Record interface {

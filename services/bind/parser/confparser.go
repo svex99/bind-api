@@ -62,7 +62,7 @@ func (bc *BindConf) AddZone(dc *DomainConf) error {
 		}
 	}
 
-	bc.Zones = append(bc.Zones, Zone{dc.Origin, "master", dc.GetFilename()})
+	bc.Zones = append(bc.Zones, Zone{dc.Origin, "master", "/var/lib/bind/db." + dc.Origin})
 
 	return nil
 }

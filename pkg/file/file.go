@@ -2,6 +2,7 @@ package file
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 )
@@ -48,6 +49,8 @@ func MakeBackup(filename string) func() {
 	backup := filename + ".bak"
 	bak_err := os.Rename(filename, backup)
 	rollback := func() {
+		log.Println("> Rollback " + filename)
+
 		if bak_err == nil {
 			if err := os.Rename(backup, filename); err != nil {
 				panic(err)
