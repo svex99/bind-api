@@ -1,63 +1,63 @@
 package parser
 
-import "encoding/json"
+// import "encoding/json"
 
-type fakeNSRecord NSRecord
+// type fakeNSRecord NSRecord
 
-func (ns NSRecord) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Hash uint `json:"hash"`
-		fakeNSRecord
-	}{
-		Hash:         ns.GetHash(),
-		fakeNSRecord: fakeNSRecord(ns),
-	})
-}
+// func (ns NSRecord) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal(struct {
+// 		Hash uint `json:"hash"`
+// 		fakeNSRecord
+// 	}{
+// 		Hash:         ns.GetHash(),
+// 		fakeNSRecord: fakeNSRecord(ns),
+// 	})
+// }
 
-type fakeARecord ARecord
+// type fakeARecord ARecord
 
-func (a ARecord) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Hash uint `json:"hash"`
-		fakeARecord
-	}{
-		Hash:        a.GetHash(),
-		fakeARecord: fakeARecord(a),
-	})
-}
+// func (a ARecord) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal(struct {
+// 		Hash uint `json:"hash"`
+// 		fakeARecord
+// 	}{
+// 		Hash:        a.GetHash(),
+// 		fakeARecord: fakeARecord(a),
+// 	})
+// }
 
-type fakeMXRecord MXRecord
+// type fakeMXRecord MXRecord
 
-func (mx MXRecord) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Hash uint `json:"hash"`
-		fakeMXRecord
-	}{
-		Hash:         mx.GetHash(),
-		fakeMXRecord: fakeMXRecord(mx),
-	})
-}
+// func (mx MXRecord) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal(struct {
+// 		Hash uint `json:"hash"`
+// 		fakeMXRecord
+// 	}{
+// 		Hash:         mx.GetHash(),
+// 		fakeMXRecord: fakeMXRecord(mx),
+// 	})
+// }
 
-type fakeTXTRecord TXTRecord
+// type fakeTXTRecord TXTRecord
 
-func (txt TXTRecord) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Hash uint `json:"hash"`
-		fakeTXTRecord
-	}{
-		Hash:          txt.GetHash(),
-		fakeTXTRecord: fakeTXTRecord(txt),
-	})
-}
+// func (txt TXTRecord) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal(struct {
+// 		Hash uint `json:"hash"`
+// 		fakeTXTRecord
+// 	}{
+// 		Hash:          txt.GetHash(),
+// 		fakeTXTRecord: fakeTXTRecord(txt),
+// 	})
+// }
 
-type fakeCNAMERecord CNAMERecord
+// type fakeCNAMERecord CNAMERecord
 
-func (cname CNAMERecord) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Hash uint `json:"hash"`
-		fakeCNAMERecord
-	}{
-		Hash:            cname.GetHash(),
-		fakeCNAMERecord: fakeCNAMERecord(cname),
-	})
-}
+// func (cname CNAMERecord) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal(struct {
+// 		Hash uint `json:"hash"`
+// 		fakeCNAMERecord
+// 	}{
+// 		Hash:            cname.GetHash(),
+// 		fakeCNAMERecord: fakeCNAMERecord(cname),
+// 	})
+// }

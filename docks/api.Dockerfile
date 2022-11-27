@@ -1,20 +1,22 @@
-FROM docker.uclv.cu/golang:1.19
+FROM docker.uclv.cu/golang:1.19.2 as base
 
-ENV GO111MODULE=on
-ENV GIN_MODE=release
-ENV PORT=2020
+ENV CGO_ENABLED=0
 
-WORKDIR /go/src/
-
-COPY go.mod go.sum ./
-COPY vendor vendor/
+WORKDIR /go/src
 
 COPY . .
 
-RUN go build -mod=vendor -o build/
+RUN go build -mod=vendor -o build/bind-api
 
-VOLUME [ "/data" ]
+
+FROM scratch as prod
+
+ENV GIN_MODE=release
+
+COPY --from=base /go/src/build/bind-api /usr/bin/bind-api
+
+VOLUME [ "/data/bind/conf", "/data/bind/lib", "/data/api" ]
 
 EXPOSE 2020
 
-CMD ["./build/bind-api"]
+CMD ["bind-api"]

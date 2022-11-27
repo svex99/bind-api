@@ -45,6 +45,8 @@ func AddContent(filePath, content string) error {
 	return nil
 }
 
+// Makes a backup (.bak file) of a plain text file
+// Returns a function that rollbacks the backup file
 func MakeBackup(filename string) func() {
 	backup := filename + ".bak"
 	bak_err := os.Rename(filename, backup)

@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,111 +13,105 @@ import (
 	"github.com/svex99/bind-api/services/bind/parser"
 )
 
-func getTargetFromRequest(c *gin.Context) (*parser.DomainConf, parser.Record, error) {
-	origin := c.Param("origin")
-	recordType := strings.ToUpper(c.Param("type"))
-
-	var data map[string]string
+func getRecord(c *gin.Context) (parser.Record, error) {
+	var data map[string]any
 
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil, nil, err
+		return nil, err
 	}
 
-	dConf, ok := bind.Service.Domains[origin]
+	typeField, ok := data["type"]
 	if !ok {
-		err := fmt.Errorf("domain %s was not found", origin)
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return nil, nil, err
+		err := errors.New("missing field 'type'")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return nil, err
 	}
+
+	rType := strings.ToUpper(typeField.(string))
 
 	var record parser.Record
 
-	switch recordType {
+	switch rType {
 	case "NS":
-		record = parser.NSRecord{Type: recordType, NameServer: string(data["nameServer"])}
+		record = parser.NSRecord{Type: rType, NameServer: string(data["nameServer"].(string))}
 	case "A":
-		record = parser.ARecord{Type: recordType, Name: data["name"], Ip: data["ip"]}
+		record = parser.ARecord{Type: rType, Name: data["name"].(string), Ip: data["ip"].(string)}
 	case "MX":
-		priority, err := strconv.ParseUint(data["priority"], 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return nil, nil, err
+		var priority uint
+
+		priority, ok = data["priority"].(uint)
+		if !ok {
+			parsedPriority, err := strconv.ParseUint(data["priority"].(string), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return nil, err
+			}
+
+			priority = uint(parsedPriority)
 		}
-		record = parser.MXRecord{Type: recordType, Priority: uint(priority), EmailServer: data["emailServer"]}
+
+		record = parser.MXRecord{Type: rType, Priority: priority, EmailServer: data["emailServer"].(string)}
 	case "TXT":
-		record = parser.TXTRecord{Type: recordType, Value: data["value"]}
+		record = parser.TXTRecord{Type: rType, Value: data["value"].(string)}
 	case "CNAME":
-		record = parser.CNAMERecord{Type: recordType, SrcName: data["srcName"], DstName: data["dstName"]}
+		record = parser.CNAMERecord{Type: rType, SrcName: data["srcName"].(string), DstName: data["dstName"].(string)}
+	default:
+		err := fmt.Errorf("field 'type' cannot be empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return nil, err
 	}
 
-	return dConf, record, nil
+	return record, nil
 }
 
 func PostRecord(c *gin.Context) {
-	bind.Service.Mutex.Lock()
-	defer bind.Service.Mutex.Unlock()
+	origin := c.Param("origin")
 
-	dConfPtr, record, err := getTargetFromRequest(c)
+	record, err := getRecord(c)
 	if err != nil {
 		return
 	}
 
-	dConf := *dConfPtr
-
-	if err := dConf.AddRecord(record); err != nil {
+	if err := bind.Service.AddRecord(origin, record); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	bind.Service.Domains[c.Param("origin")] = &dConf
-
-	c.JSON(http.StatusCreated, gin.H{"record": record})
+	c.JSON(http.StatusCreated, record)
 }
 
 func PatchRecord(c *gin.Context) {
-	bind.Service.Mutex.Lock()
-	defer bind.Service.Mutex.Unlock()
+	origin := c.Param("origin")
+	target := c.Param("target") + "\n"
 
-	hash, err := strconv.ParseUint(c.Param("hash"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Errorf("invalid hash %s", c.Param("hash"))})
-	}
+	log.Println(target)
 
-	dConfPtr, record, err := getTargetFromRequest(c)
+	record, err := getRecord(c)
 	if err != nil {
 		return
 	}
 
-	dConf := *dConfPtr
-
-	if err := dConf.UpdateRecord(uint(hash), record); err != nil {
+	if err := bind.Service.UpdateRecord(origin, target, record); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	bind.Service.Domains[c.Param("origin")] = &dConf
-
-	c.JSON(http.StatusOK, gin.H{"record": record})
+	c.JSON(http.StatusOK, record)
 }
 
 func DeleteRecord(c *gin.Context) {
-	bind.Service.Mutex.Lock()
-	defer bind.Service.Mutex.Unlock()
+	origin := c.Param("origin")
 
-	dConfPtr, record, err := getTargetFromRequest(c)
+	record, err := getRecord(c)
 	if err != nil {
 		return
 	}
 
-	dConf := *dConfPtr
-
-	if err := dConf.DeleteRecord(record.GetHash()); err != nil {
+	if err := bind.Service.DeleteRecord(origin, record); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-
-	bind.Service.Domains[c.Param("origin")] = &dConf
 
 	c.JSON(http.StatusOK, gin.H{"message": "record deleted"})
 }

@@ -1,0 +1,100 @@
+version: "3.8"
+
+x-default-api: &default-api
+  dns:
+    - 172.30.10.1
+  environment:
+    - DOCKER_HOST=http://host.docker.internal:2375
+    - BIND_HOST=bind-server
+  extra_hosts:
+  - "host.docker.internal:host-gateway"
+  networks:
+    bind-services:
+      ipv4_address: 172.30.10.2
+
+x-default-api-dev: &default-api-dev
+  <<: *default-api
+  image: bind-api-dev
+  build:
+    dockerfile: docks/dev.Dockerfile
+    context: .
+    target: dev
+  volumes:
+    - bind-conf:/go/src/data/bind/conf
+    - bind-lib:/go/src/data/bind/lib
+    - bind-api-data:/go/src/data/api
+    - .:/go/src
+
+services:
+  bind-api-prod:
+    <<: *default-api
+    image: bind-api-prod
+    container_name: bind-api-prod
+    build:
+      dockerfile: docks/api.Dockerfile
+      context: .
+      target: prod
+    ports:
+      - 2020:2020
+    volumes:
+      - bind-conf:/data/bind/conf
+      - bind-lib:/data/bind/lib
+      - bind-api-data:/data/api
+    profiles:
+      - prod
+
+  bind-api-dev:
+    <<: *default-api-dev
+    container_name: bind-api-dev
+    ports:
+      - 2020:2020
+    profiles:
+      - dev
+
+  bind-api-bench:
+    <<: *default-api-dev
+    container_name: bind-api-bench
+    command: go test -bench=. -benchtime=1x -run=^#
+    profiles:
+      - bench
+
+  bind-server:
+    image: docker.uclv.cu/ubuntu/bind9
+    container_name: bind-server
+    environment:
+      - TZ=UTC
+      - BIND9_USER=bind
+    ports:
+      - "30053:53/udp"
+      - "30053:53/tcp"
+    volumes:
+      - bind-conf:/etc/bind
+      - bind-lib:/var/lib/bind
+      - bind-cache:/var/cache/bind
+      - bind-log:/var/log
+    networks:
+      bind-services:
+        ipv4_address: 172.30.10.1
+    profiles:
+      - prod
+      - dev
+      - bench
+
+volumes:
+  bind-conf:
+    external: true
+  bind-lib:
+    external: true
+  bind-cache: {}
+  bind-log: {}
+  bind-api-data:
+    external: true
+
+networks:
+  bind-services:
+    name: bind-services
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.10.0/16

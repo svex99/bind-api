@@ -11,62 +11,57 @@ import (
 	"github.com/svex99/bind-api/services/bind/parser"
 )
 
-func ListDomains(c *gin.Context) {
+func ListZones(c *gin.Context) {
 	bind.Service.Mutex.Lock()
 	defer bind.Service.Mutex.Unlock()
 
-	domains := []*parser.DomainConf{}
+	zones := []*parser.ZoneConf{}
 
-	for _, domain := range bind.Service.Domains {
-		domains = append(domains, domain)
+	for _, zone := range bind.Service.Zones {
+		zones = append(zones, zone)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"domains": domains,
-	})
+	c.JSON(http.StatusOK, zones)
 }
 
-func GetDomain(c *gin.Context) {
-	bind.Service.Mutex.Lock()
-	defer bind.Service.Mutex.Unlock()
-
+func GetZone(c *gin.Context) {
 	origin := c.Param("origin")
 
-	dConf, ok := bind.Service.Domains[origin]
+	zConf, ok := bind.Service.Zones[origin]
 	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("domain %s does not exist", origin)})
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("zone %s does not exist", origin)})
 		return
 	}
 
-	c.JSON(http.StatusOK, dConf)
+	c.JSON(http.StatusOK, zConf)
 }
 
-func NewDomain(c *gin.Context) {
-	var data schemas.DomainData
+func NewZone(c *gin.Context) {
+	var data schemas.ZoneData
 
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	dConf, err := bind.Service.CreateDomain(&data)
+	zConf, err := bind.Service.CreateZone(&data)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, dConf)
+	c.JSON(http.StatusCreated, zConf)
 }
 
-func UpdateDomain(c *gin.Context) {
-	var data schemas.DomainData
+func PatchZone(c *gin.Context) {
+	var data schemas.ZoneData
 
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	dConf, err := bind.Service.UpdateDomain(data.Origin, &data)
+	dConf, err := bind.Service.UpdateZone(data.Origin, &data)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -75,10 +70,10 @@ func UpdateDomain(c *gin.Context) {
 	c.JSON(http.StatusOK, dConf)
 }
 
-func DeleteDomain(c *gin.Context) {
+func DeleteZone(c *gin.Context) {
 	origin := c.Param("origin")
 
-	if err := bind.Service.DeleteDomain(origin); err != nil {
+	if err := bind.Service.DeleteZone(origin); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

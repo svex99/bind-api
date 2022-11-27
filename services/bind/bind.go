@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -22,12 +23,12 @@ type BindService struct {
 	ContainerId   string
 	ZonesFilePath string
 	BindConf      *parser.BindConf
-	Domains       map[string]*parser.DomainConf
+	Zones         map[string]*parser.ZoneConf
 }
 
 var Service = &BindService{}
 
-func init() {
+func (bs *BindService) Init() {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 
 	if err != nil {
@@ -40,25 +41,31 @@ func init() {
 	Service.ContainerId = setting.Bind.ContainerId
 	Service.ZonesFilePath = setting.Bind.ConfPath + "named.conf.local"
 
-	Service.BindConf, err = Service.parseBindConf(Service.ZonesFilePath)
+	Service.Load()
+}
+
+func (bs *BindService) Load() {
+	var err error
+
+	bs.BindConf, err = bs.parseBindConf(Service.ZonesFilePath)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	fmt.Printf(">>> Loaded %d zone(s) from %s\n", len(Service.BindConf.Zones), Service.ZonesFilePath)
 
-	Service.Domains = make(map[string]*parser.DomainConf)
+	bs.Zones = make(map[string]*parser.ZoneConf)
 
-	fmt.Println(">>> Loading BIND9 domain files")
+	fmt.Println(">>> Loading BIND9 zone files")
 	for _, zone := range Service.BindConf.Zones {
 		filename := zone.File[strings.LastIndex(zone.File, "/")+1:]
 
-		dConf, err := Service.parseDomainConf(setting.Bind.LibPath + filename)
+		zConf, err := Service.parseZoneConf(setting.Bind.LibPath + filename)
 		if err != nil {
-			fmt.Printf("Error loading %s: %s", filename, err)
+			log.Printf("Error loading %s: %s\n", filename, err)
 			continue
 		}
 
-		Service.Domains[dConf.Origin] = dConf
+		Service.Zones[zConf.Origin] = zConf
 		fmt.Println("Loaded domain file", filename)
 	}
 }
@@ -77,29 +84,32 @@ func (bs *BindService) parseBindConf(filename string) (*parser.BindConf, error) 
 	return bindConf, nil
 }
 
-func (bs *BindService) parseDomainConf(filename string) (*parser.DomainConf, error) {
+func (bs *BindService) parseZoneConf(filename string) (*parser.ZoneConf, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	dConf, err := parser.ZoneParser.Parse(filename, file)
+	zConf, err := parser.ZoneParser.Parse(filename, file)
 	if err != nil {
 		return nil, err
 	}
 
-	return dConf, nil
+	return zConf, nil
 }
 
-func (bm *BindService) CreateDomain(data *schemas.DomainData) (*parser.DomainConf, error) {
-	bm.Mutex.Lock()
-	defer bm.Mutex.Unlock()
+func (bs *BindService) CreateZone(data *schemas.ZoneData) (*parser.ZoneConf, error) {
+	// Get write access to the filesystem and release it when done
+	bs.Mutex.Lock()
+	defer bs.Mutex.Unlock()
 
-	if _, ok := bm.Domains[data.Origin]; ok {
-		return nil, fmt.Errorf("domain %s exists already", data.Origin)
+	// Validate that the new zone is not defined already
+	if _, ok := bs.Zones[data.Origin]; ok {
+		return nil, fmt.Errorf("zone %s exists already", data.Origin)
 	}
 
-	dConf := &parser.DomainConf{
+	// Create the new zone from received data
+	zConf := &parser.ZoneConf{
 		Origin: data.Origin,
 		Ttl:    data.Ttl,
 		SOARecord: &parser.SOARecord{
@@ -110,143 +120,213 @@ func (bm *BindService) CreateDomain(data *schemas.DomainData) (*parser.DomainCon
 			Expire:     data.Expire,
 			Minimum:    data.Minimum,
 		},
-		Records: []parser.Record{
-			parser.NSRecord{NameServer: data.NameServer, Type: "NS"},
-			parser.ARecord{Name: data.NameServer, Ip: data.NSIp, Type: "A"},
-		},
+		Records: []parser.Record{},
 	}
 
-	rollbackDConf, err := dConf.WriteToDisk(dConf.GetFilename())
+	bindConf := *bs.BindConf
+
+	if err := bindConf.AddZone(zConf); err != nil {
+		return nil, err
+	}
+
+	// Write new changes to BIND files and rollback on error
+	rollbackZConf, err := zConf.WriteToDisk(zConf.GetFilename())
 	if err != nil {
-		rollbackDConf()
+		rollbackZConf()
 		return nil, err
 	}
 
-	bindConf := *bm.BindConf
-
-	if err := bindConf.AddZone(dConf); err != nil {
-		rollbackDConf()
-		return nil, err
-	}
-
-	rollbackBindConf, err := bindConf.WriteToDisk(bm.ZonesFilePath)
+	rollbackBindConf, err := bindConf.WriteToDisk(bs.ZonesFilePath)
 	if err != nil {
-		rollbackDConf()
-		return nil, err
-	}
-
-	if err := bm.Reconfig(); err != nil {
-		rollbackDConf()
+		rollbackZConf()
 		rollbackBindConf()
 		return nil, err
 	}
 
-	bm.BindConf = &bindConf
-	bm.Domains[dConf.Origin] = dConf
-
-	return dConf, nil
-}
-
-func (bm *BindService) UpdateDomain(targetOrigin string, data *schemas.DomainData) (*parser.DomainConf, error) {
-	bm.Mutex.Lock()
-	defer bm.Mutex.Unlock()
-
-	targetDConfPointer, ok := bm.Domains[targetOrigin]
-	if !ok {
-		return nil, fmt.Errorf("domain %s does not exist", targetOrigin)
-	}
-
-	targetDConf := *targetDConfPointer
-
-	// Get the name server
-	fmt.Println(parser.NSRecord{NameServer: targetDConf.SOARecord.NameServer})
-	indexNS, err := targetDConf.GetRecordIndex(parser.NSRecord{NameServer: targetDConf.SOARecord.NameServer}.GetHash())
-	if err != nil {
+	// Notify BIND about the new update
+	if err := bs.Reconfig(); err != nil {
+		rollbackZConf()
+		rollbackBindConf()
 		return nil, err
 	}
-	targetNS := targetDConf.Records[indexNS].(parser.NSRecord)
 
-	for i, record := range targetDConf.Records {
-		switch record.(type) {
-		case parser.ARecord:
-			aRecord := targetDConf.Records[i].(parser.ARecord)
-			if aRecord.Name == targetDConf.SOARecord.NameServer {
-				aRecord.Name = data.NameServer
-				targetDConf.Records[i] = aRecord
-			}
-		}
+	// Sync changes on memory
+	bs.BindConf = &bindConf
+	bs.Zones[zConf.Origin] = zConf
+
+	return zConf, nil
+}
+
+func (bs *BindService) UpdateZone(targetOrigin string, data *schemas.ZoneData) (*parser.ZoneConf, error) {
+	bs.Mutex.Lock()
+	defer bs.Mutex.Unlock()
+
+	zConfPointer, ok := bs.Zones[targetOrigin]
+	if !ok {
+		return nil, fmt.Errorf("zone %s does not exist", targetOrigin)
 	}
 
-	targetDConf.Ttl = data.Ttl
+	ZConf := *zConfPointer
 
-	targetDConf.SOARecord.NameServer = data.NameServer
-	targetDConf.SOARecord.Admin = data.Admin
-	targetDConf.SOARecord.Refresh = data.Refresh
-	targetDConf.SOARecord.Retry = data.Retry
-	targetDConf.SOARecord.Expire = data.Expire
-	targetDConf.SOARecord.Minimum = data.Minimum
+	ZConf.Ttl = data.Ttl
+	ZConf.SOARecord.NameServer = data.NameServer
+	ZConf.SOARecord.Admin = data.Admin
+	ZConf.SOARecord.Refresh = data.Refresh
+	ZConf.SOARecord.Retry = data.Retry
+	ZConf.SOARecord.Expire = data.Expire
+	ZConf.SOARecord.Minimum = data.Minimum
 
-	targetNS.NameServer = data.NameServer
-	targetDConf.Records[indexNS] = targetNS
-
-	rollback, err := targetDConf.WriteToDisk(targetDConf.GetFilename())
+	rollback, err := ZConf.WriteToDisk(ZConf.GetFilename())
 	if err != nil {
 		rollback()
 		return nil, err
 	}
 
-	if err := bm.ReloadZone(targetOrigin); err != nil {
+	if err := bs.ReloadZone(targetOrigin); err != nil {
 		rollback()
 		return nil, err
 	}
 
-	bm.Domains[targetOrigin] = &targetDConf
+	bs.Zones[targetOrigin] = &ZConf
 
-	return &targetDConf, nil
+	return &ZConf, nil
 }
 
-func (bm *BindService) DeleteDomain(targetOrigin string) error {
-	bm.Mutex.Lock()
-	defer bm.Mutex.Unlock()
+func (bs *BindService) DeleteZone(origin string) error {
+	bs.Mutex.Lock()
+	defer bs.Mutex.Unlock()
 
-	targetDConf, ok := bm.Domains[targetOrigin]
+	targetZConf, ok := bs.Zones[origin]
 	if !ok {
-		return fmt.Errorf("domain %s does not exist", targetOrigin)
+		return fmt.Errorf("domain %s does not exist", origin)
 	}
 
-	rollbackDConf, err := targetDConf.DeleteFromDisk(targetDConf.GetFilename())
+	rollbackDConf, err := targetZConf.DeleteFromDisk(targetZConf.GetFilename())
 	if err != nil {
 		rollbackDConf()
 		return err
 	}
 
-	bindConf := *bm.BindConf
+	bindConf := *bs.BindConf
 
-	if err := bindConf.DeleteZone(targetDConf); err != nil {
+	if err := bindConf.DeleteZone(targetZConf); err != nil {
 		rollbackDConf()
 		return err
 	}
 
-	rollbackBindConf, err := bindConf.WriteToDisk(bm.ZonesFilePath)
+	rollbackBindConf, err := bindConf.WriteToDisk(bs.ZonesFilePath)
 	if err != nil {
 		rollbackDConf()
 		rollbackBindConf()
 		return err
 	}
 
-	if err := bm.Reload(); err != nil {
+	if err := bs.Reconfig(); err != nil {
 		rollbackDConf()
 		rollbackBindConf()
 		return err
 	}
 
-	bm.BindConf = &bindConf
-	delete(bm.Domains, targetOrigin)
+	bs.BindConf = &bindConf
+	delete(bs.Zones, origin)
 
 	return nil
 }
 
-func (bs *BindService) exec(command []string) error {
+func (bs *BindService) AddRecord(origin string, record parser.Record) error {
+	bs.Mutex.Lock()
+	defer bs.Mutex.Unlock()
+
+	targetZConf, ok := bs.Zones[origin]
+	if !ok {
+		return errors.New("origin not found")
+	}
+
+	zConf := *targetZConf
+
+	if err := zConf.AddRecord(record); err != nil {
+		return err
+	}
+
+	rollback, err := zConf.WriteToDisk(zConf.GetFilename())
+	if err != nil {
+		rollback()
+		return err
+	}
+
+	if err := bs.ReloadZone(origin); err != nil {
+		rollback()
+		return err
+	}
+
+	bs.Zones[origin] = &zConf
+
+	return nil
+}
+
+func (bs *BindService) UpdateRecord(origin, target string, record parser.Record) error {
+	bs.Mutex.Lock()
+	defer bs.Mutex.Unlock()
+
+	targetZConf, ok := bs.Zones[origin]
+	if !ok {
+		return errors.New("origin not found")
+	}
+
+	zConf := *targetZConf
+
+	if err := zConf.UpdateRecord(target, record); err != nil {
+		return err
+	}
+
+	rollback, err := zConf.WriteToDisk(zConf.GetFilename())
+	if err != nil {
+		rollback()
+		return err
+	}
+
+	if err := bs.ReloadZone(origin); err != nil {
+		rollback()
+		return err
+	}
+
+	bs.Zones[origin] = &zConf
+
+	return nil
+}
+
+func (bs *BindService) DeleteRecord(origin string, record parser.Record) error {
+	bs.Mutex.Lock()
+	defer bs.Mutex.Unlock()
+
+	targetZConf, ok := bs.Zones[origin]
+	if !ok {
+		return errors.New("origin not found")
+	}
+
+	zConf := *targetZConf
+
+	if err := zConf.DeleteRecord(record); err != nil {
+		return err
+	}
+
+	rollback, err := zConf.WriteToDisk(zConf.GetFilename())
+	if err != nil {
+		rollback()
+		return err
+	}
+
+	if err := bs.ReloadZone(origin); err != nil {
+		rollback()
+		return err
+	}
+
+	bs.Zones[origin] = &zConf
+
+	return nil
+}
+
+func (bs *BindService) exec(command ...string) error {
 	// was used as reference for this method the docker-cli exec command implementation
 	// https://github.com/docker/cli/blob/1163b4609978e0e6f2b2629b59c4a62d348e1466/cli/command/container/exec.go#L99
 
@@ -259,9 +339,9 @@ func (bs *BindService) exec(command []string) error {
 		Privileged:   false,
 		Tty:          false,
 		AttachStdin:  false,
-		AttachStderr: false,
+		AttachStderr: true,
 		AttachStdout: false,
-		Detach:       true,
+		Detach:       false,
 		DetachKeys:   "",
 		Env:          []string{},
 		WorkingDir:   "/",
@@ -291,15 +371,10 @@ func (bs *BindService) exec(command []string) error {
 // Runs `rndc reconfig` in the BIND server.
 // Reloads the configuration file and loads new zones, but does not reload existing zone files even if they have changed.
 func (bs *BindService) Reconfig() error {
-	return bs.exec([]string{"rndc", "reconfig"})
-}
-
-// Runs `rndc reload` in the BIND server
-func (bs *BindService) Reload() error {
-	return bs.exec([]string{"rndc", "reload"})
+	return bs.exec("rndc", "reconfig")
 }
 
 // Runs `rndc reload {zone}` in the BIND server
 func (bs *BindService) ReloadZone(zone string) error {
-	return bs.exec([]string{"rndc", "reload", zone})
+	return bs.exec("rndc", "reload", zone)
 }

@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"hash/fnv"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
@@ -12,8 +11,8 @@ import (
 var (
 	ZoneLexer = lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Directive", Pattern: `\$(ORIGIN|TTL)`},
-		{Name: "Keyword", Pattern: `@`},
-		{Name: "RType", Pattern: `IN|SOA|NS|A|MX|TXT|PTR`},
+		{Name: "Keyword", Pattern: `@|IN`},
+		{Name: "RType", Pattern: `SOA|NS|A|MX|TXT|CNAME`},
 		{Name: "Origin", Pattern: `[a-zA-Z][\w\-]*\.[a-zA-Z]+`},
 		{Name: "Name", Pattern: `[a-zA-Z][\w\-]*`},
 		{Name: "Ttl", Pattern: `\d+[hdw]`},
@@ -25,7 +24,7 @@ var (
 		{Name: "Whitespace", Pattern: `[ \t\r]+`},
 		{Name: "NewLine", Pattern: `[\n]+`},
 	})
-	ZoneParser = participle.MustBuild[DomainConf](
+	ZoneParser = participle.MustBuild[ZoneConf](
 		participle.Lexer(ZoneLexer),
 		participle.Union[Record](NSRecord{}, ARecord{}, MXRecord{}, TXTRecord{}, CNAMERecord{}),
 		participle.Elide("Whitespace", "Comment"),
@@ -34,7 +33,7 @@ var (
 	)
 )
 
-type DomainConf struct {
+type ZoneConf struct {
 	Origin    string     `parser:"'$ORIGIN' @Origin '.' NewLine" json:"origin"`
 	Ttl       string     `parser:"'$TTL' @Ttl NewLine" json:"ttl"`
 	SOARecord *SOARecord `parser:"@@ NewLine" json:"soaRecord"`
@@ -42,12 +41,11 @@ type DomainConf struct {
 }
 
 // TODO: Do not return path from string concatenation
-func (dc *DomainConf) GetFilename() string {
-	return fmt.Sprintf("%sdb.%s", setting.Bind.LibPath, dc.Origin)
+func (zc *ZoneConf) GetFilename() string {
+	return fmt.Sprintf("%sdb.%s", setting.Bind.LibPath, zc.Origin)
 }
 
 type Record interface {
-	GetHash() uint
 	String() string
 }
 
@@ -66,12 +64,6 @@ type NSRecord struct {
 	NameServer string `parser:"@Name NewLine" json:"nameServer"`
 }
 
-func (ns NSRecord) GetHash() uint {
-	h := fnv.New64a()
-	h.Write([]byte(ns.String()))
-	return uint(h.Sum64())
-}
-
 func (ns NSRecord) String() string {
 	return fmt.Sprintf("@ IN NS %s\n", ns.NameServer)
 }
@@ -80,12 +72,6 @@ type ARecord struct {
 	Name string `parser:"@Name" json:"name"`
 	Type string `parser:"'IN' @'A'" json:"type"`
 	Ip   string `parser:"@Ipv4 NewLine" json:"ip"`
-}
-
-func (a ARecord) GetHash() uint {
-	h := fnv.New64a()
-	h.Write([]byte(a.String()))
-	return uint(h.Sum64())
 }
 
 func (a ARecord) String() string {
@@ -98,12 +84,6 @@ type MXRecord struct {
 	EmailServer string `parser:"@Name NewLine" json:"emailServer"`
 }
 
-func (mx MXRecord) GetHash() uint {
-	h := fnv.New64a()
-	h.Write([]byte(mx.String()))
-	return uint(h.Sum64())
-}
-
 func (mx MXRecord) String() string {
 	return fmt.Sprintf("@ IN MX %d %s\n", mx.Priority, mx.EmailServer)
 }
@@ -113,26 +93,14 @@ type TXTRecord struct {
 	Value string `parser:"@String NewLine" json:"value"`
 }
 
-func (txt TXTRecord) GetHash() uint {
-	h := fnv.New64a()
-	h.Write([]byte(txt.String()))
-	return uint(h.Sum64())
-}
-
 func (txt TXTRecord) String() string {
-	return fmt.Sprintf("@ IN TXT %s", txt.Value)
+	return fmt.Sprintf("@ IN TXT \"%s\"\n", txt.Value)
 }
 
 type CNAMERecord struct {
 	SrcName string `parser:"@Name 'IN'" json:"srcName"`
 	Type    string `parser:"@'CNAME'" json:"type"`
 	DstName string `parser:"@Name NewLine" json:"dstName"`
-}
-
-func (cname CNAMERecord) GetHash() uint {
-	h := fnv.New64a()
-	h.Write([]byte(cname.String()))
-	return uint(h.Sum64())
 }
 
 func (cname CNAMERecord) String() string {

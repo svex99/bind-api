@@ -7,6 +7,7 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
+	"github.com/svex99/bind-api/pkg/file"
 )
 
 var (
@@ -14,18 +15,19 @@ var (
 		{Name: "Keyword", Pattern: `[a-zA-Z\-]+`},
 		{Name: "String", Pattern: `"[^"\n]*"`},
 		{Name: "Punct", Pattern: `[\{\}\;]`},
+		{Name: "Comment", Pattern: `//[^\n]*\n+`},
 		{Name: "Whitespace", Pattern: `[ \t\r\n]+`},
 	})
 	ConfParser = participle.MustBuild[BindConf](
 		participle.Lexer(ConfLexer),
 		participle.Unquote("String"),
-		participle.Elide("Whitespace"),
+		participle.Elide("Whitespace", "Comment"),
 		participle.UseLookahead(1),
 	)
 )
 
 type BindConf struct {
-	Zones []Zone `parser:"@@*"`
+	Zones []*Zone `parser:"@@*"`
 }
 
 type Zone struct {
@@ -36,38 +38,28 @@ type Zone struct {
 
 func (bc *BindConf) WriteToDisk(filename string) (func(), error) {
 	// Create a backup of config if file exists
-	backup := filename + ".bak"
-	bak_err := os.Rename(filename, backup)
-	rollback := func() {
-		if bak_err == nil {
-			if err := os.Rename(backup, filename); err != nil {
-				panic(err)
-			}
-		}
-	}
+	rollback := file.MakeBackup(filename)
 
 	if err := os.WriteFile(filename, []byte(bc.String()), 0666); err != nil {
-		// TODO: Consider not rollback here
-		rollback()
 		return rollback, err
 	}
 
 	return rollback, nil
 }
 
-func (bc *BindConf) AddZone(dc *DomainConf) error {
+func (bc *BindConf) AddZone(dc *ZoneConf) error {
 	for _, zone := range bc.Zones {
 		if zone.Name == dc.Origin {
 			return fmt.Errorf("zone already exists")
 		}
 	}
 
-	bc.Zones = append(bc.Zones, Zone{dc.Origin, "master", "/var/lib/bind/db." + dc.Origin})
+	bc.Zones = append(bc.Zones, &Zone{dc.Origin, "master", "/var/lib/bind/db." + dc.Origin})
 
 	return nil
 }
 
-func (bc *BindConf) DeleteZone(dc *DomainConf) error {
+func (bc *BindConf) DeleteZone(dc *ZoneConf) error {
 	foundIndex := -1
 
 	for i, zone := range bc.Zones {

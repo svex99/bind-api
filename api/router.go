@@ -1,40 +1,33 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/svex99/bind-api/handlers"
 	"github.com/svex99/bind-api/middlewares"
-	"github.com/svex99/bind-api/pkg/setting"
 )
 
-func SetupRouter() *gin.Engine {
-	router := gin.Default()
+func SetupRouter(logRequests bool) *gin.Engine {
+	router := gin.New()
 
-	public := router.Group("/api")
+	router.UseRawPath = true
+
+	router.Use(gin.Recovery())
 	router.Use(middlewares.CORS())
-	public.POST("/register", handlers.Register)
-	public.POST("/login", handlers.Login)
-	public.GET("/test", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"secret":   setting.App.JwtSecret,
-			"lifespan": setting.App.TokenHourLifespan,
-		})
-	})
+	if logRequests {
+		router.Use(gin.Logger())
+	}
 
-	protected := router.Group("/api")
-	// protected.Use(middlewares.JWTAuth())
+	api := router.Group("/api")
 	// domain handlers
-	protected.GET("/domains", handlers.ListDomains)
-	protected.POST("/domains", handlers.NewDomain)
-	protected.PATCH("/domains", handlers.UpdateDomain)
-	protected.GET("/domains/:origin", handlers.GetDomain)
-	protected.DELETE("/domains/:origin", handlers.DeleteDomain)
+	api.GET("/zones", handlers.ListZones)
+	api.GET("/zones/:origin", handlers.GetZone)
+	api.POST("/zones", handlers.NewZone)
+	api.PATCH("/zones", handlers.PatchZone)
+	api.DELETE("/zones/:origin", handlers.DeleteZone)
 	// record handlers
-	protected.POST("/domains/:origin/record/:type", handlers.PostRecord)
-	protected.PATCH("/domains/:origin/record/:type/:hash", handlers.PatchRecord)
-	protected.DELETE("/domains/:origin/record/:type", handlers.DeleteRecord)
+	api.POST("/zones/:origin/records", handlers.PostRecord)
+	api.PATCH("/zones/:origin/records/:target", handlers.PatchRecord)
+	api.DELETE("/zones/:origin/records", handlers.DeleteRecord)
 
 	return router
 }

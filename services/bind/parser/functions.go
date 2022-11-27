@@ -11,19 +11,19 @@ import (
 
 // Writes the zone configuration to a plain text file.
 // Returns a function that rollbacks the process.
-func (dc *DomainConf) WriteToDisk(filename string) (func(), error) {
-	dc.UpdateSerial()
+func (zc *ZoneConf) WriteToDisk(filename string) (func(), error) {
+	zc.UpdateSerial()
 
 	content := []string{
-		fmt.Sprintf("$ORIGIN %s.", dc.Origin),
-		fmt.Sprintf("$TTL %s", dc.Ttl),
+		fmt.Sprintf("$ORIGIN %s.", zc.Origin),
+		fmt.Sprintf("$TTL %s", zc.Ttl),
 		fmt.Sprintf(
-			"@ IN SOA %s %s ( %d %d %d %d %d )",
-			dc.SOARecord.NameServer, dc.SOARecord.Admin,
-			dc.SOARecord.Serial, dc.SOARecord.Refresh, dc.SOARecord.Retry, dc.SOARecord.Expire, dc.SOARecord.Minimum,
+			"@ IN SOA %s %s ( %d %d %d %d %d )\n",
+			zc.SOARecord.NameServer, zc.SOARecord.Admin,
+			zc.SOARecord.Serial, zc.SOARecord.Refresh, zc.SOARecord.Retry, zc.SOARecord.Expire, zc.SOARecord.Minimum,
 		),
 	}
-	for _, record := range dc.Records {
+	for _, record := range zc.Records {
 		content = append(content, record.String())
 	}
 
@@ -37,7 +37,7 @@ func (dc *DomainConf) WriteToDisk(filename string) (func(), error) {
 	return rollback, nil
 }
 
-func (dc *DomainConf) DeleteFromDisk(filename string) (func(), error) {
+func (zc *ZoneConf) DeleteFromDisk(filename string) (func(), error) {
 	// Create a backup of config if file exists
 	rollback := file.MakeBackup(filename)
 
@@ -46,40 +46,54 @@ func (dc *DomainConf) DeleteFromDisk(filename string) (func(), error) {
 	return rollback, nil
 }
 
-func (dc *DomainConf) GetRecordIndex(hash uint) (int, error) {
-	for i, record := range dc.Records {
-		if record.GetHash() == hash {
-			return i, nil
+func (zc *ZoneConf) GetRecordIndex(targetRecord Record) int {
+	target := targetRecord.String()
+	return zc.GetRecordStringIndex(target)
+}
+
+func (zc *ZoneConf) GetRecordStringIndex(target string) int {
+	for i, record := range zc.Records {
+		if record.String() == target {
+			return i
 		}
 	}
 
-	return -1, fmt.Errorf("no record found for hash '%d'", hash)
+	return -1
 }
 
 // Generates a new serial for the SOA record.
 // Generated serials follows the format YYYYMMDDNN where NN is a two digits identifier.
-func (dc *DomainConf) UpdateSerial() {
+func (zc *ZoneConf) UpdateSerial() {
 	now := time.Now().UTC()
 	newSerial := uint(now.Year()*1_000_000 + int(now.Month())*10_000 + now.Day()*100)
 
-	if dc.SOARecord.Serial >= newSerial {
-		dc.SOARecord.Serial = dc.SOARecord.Serial + 1
+	if zc.SOARecord.Serial >= newSerial {
+		zc.SOARecord.Serial = zc.SOARecord.Serial + 1
 	} else {
-		dc.SOARecord.Serial = newSerial
+		zc.SOARecord.Serial = newSerial
 	}
 }
 
-func (dc *DomainConf) AddRecord(newRecord Record) error {
-	recordHash := newRecord.GetHash()
-
-	_, err := dc.GetRecordIndex(recordHash)
-	if err == nil {
-		return fmt.Errorf("record with hash '%d' exists already", recordHash)
+func (zc *ZoneConf) AddRecord(record Record) error {
+	index := zc.GetRecordIndex(record)
+	if index != -1 {
+		return fmt.Errorf("record '%s' exists already", record.String())
 	}
 
-	dc.Records = append(dc.Records, newRecord)
+	zc.Records = append(zc.Records, record)
 
-	if rollback, err := dc.WriteToDisk(dc.GetFilename()); err != nil {
+	return nil
+}
+
+func (zc *ZoneConf) UpdateRecord(target string, record Record) error {
+	index := zc.GetRecordStringIndex(target)
+	if index == -1 {
+		return fmt.Errorf("target '%s' record does not exist", target)
+	}
+
+	zc.Records[index] = record
+
+	if rollback, err := zc.WriteToDisk(zc.GetFilename()); err != nil {
 		rollback()
 		return err
 	}
@@ -87,34 +101,13 @@ func (dc *DomainConf) AddRecord(newRecord Record) error {
 	return nil
 }
 
-func (dc *DomainConf) UpdateRecord(targetHash uint, updateRecord Record) error {
-	targetIndex, err := dc.GetRecordIndex(targetHash)
-	if err != nil {
-		return err
+func (zc *ZoneConf) DeleteRecord(record Record) error {
+	index := zc.GetRecordIndex(record)
+	if index == -1 {
+		return fmt.Errorf("record '%s' does not exist", record.String())
 	}
 
-	dc.Records[targetIndex] = updateRecord
-
-	if rollback, err := dc.WriteToDisk(dc.GetFilename()); err != nil {
-		rollback()
-		return err
-	}
-
-	return nil
-}
-
-func (dc *DomainConf) DeleteRecord(targetHash uint) error {
-	targetIndex, err := dc.GetRecordIndex(targetHash)
-	if err != nil {
-		return err
-	}
-
-	dc.Records = append(dc.Records[:targetIndex], dc.Records[targetIndex+1:]...)
-
-	if rollback, err := dc.WriteToDisk(dc.GetFilename()); err != nil {
-		rollback()
-		return err
-	}
+	zc.Records = append(zc.Records[:index], zc.Records[index+1:]...)
 
 	return nil
 }
